@@ -1,6 +1,7 @@
 # SpectralClustering
 
-[Documentation](https://lucianolorenti.github.io/SpectralClustering.jl/latest/)
+[Documentation](https://lucianolorenti.github.io/SpectralClustering.jl/)
+Check out the [Examples](https://lucianolorenti.github.io/SpectralClustering.jl/notebooks/Index.html)
 
 The library provides functions that allow:
 * Build the affinity matrix. 
@@ -29,7 +30,7 @@ The library provides functions that allow:
   * TODO [Incremental spectral clustering by efficiently updating the eigen-system](https://www.sciencedirect.com/science/article/pii/S0031320309002209/pdfft?md5=dc50ecba5ab9ab23ea239ef89244800a&pid=1-s2.0-S0031320309002209-main.pdf)
 * Clusterize
   * [Multiclass Spectral Clustering](http://www.public.asu.edu/~jye02/CLASSES/Spring-2007/Papers/PAPERS/295_yu_s.pdf)
-  * [Kmeans](https://github.com/JuliaStats/Clustering.jl)
+  * KMeans via [Clustering.jl](https://github.com/JuliaStats/Clustering.jl) 
 
 
 

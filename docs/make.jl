@@ -38,7 +38,7 @@ for file in readdir(joinpath(dirname(@__FILE__), "notebooks"))
         cp(full_path, joinpath(notebook_output_dir,file))
     end
 end
-#deploydocs(
-#    repo = "github.com/lucianolorenti/SpectralClustering.jl.git",
-#    julia  = "0.6"
-#)
+deploydocs(
+    repo = "github.com/lucianolorenti/SpectralClustering.jl.git",
+    julia  = "0.6"
+)

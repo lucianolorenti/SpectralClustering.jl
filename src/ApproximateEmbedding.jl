@@ -1,5 +1,4 @@
 using Clustering
-using SpatialIndex
 export NystromMethod,
        LandmarkBasedRepresentation,
        DNCuts

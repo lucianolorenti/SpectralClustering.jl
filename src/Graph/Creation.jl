@@ -109,7 +109,7 @@ end
 ```julia
 type KNNNeighborhood <: VertexNeighborhood
     k::Integer
-    tree::SpatialIndex.Index
+    tree::KDTree
 end
 ```
 `KNNNeighborhood` specifies that the neighborhood for a given vertex \$j\$ are the \$k\$ nearest neighborgs. It uses a tree to search the nearest patterns.
