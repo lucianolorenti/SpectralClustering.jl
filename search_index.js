@@ -21,7 +21,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Home",
     "title": "Installation",
     "category": "section",
-    "text": "At the Julia REPL:    Pkg.add(\"SpectralClustering\")"
+    "text": "At the Julia REPL:Pkg.clone(\"https://github.com/lucianolorenti/SpectralClustering.jl.git\")"
 },
 
 {
