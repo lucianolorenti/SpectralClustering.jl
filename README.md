@@ -1,11 +1,11 @@
 # SpectralClustering
 
-[Documentation](https://lucianolorenti.github.io/SpectralClustering.jl/)
-Check out the [Examples](https://lucianolorenti.github.io/SpectralClustering.jl/notebooks/Index.html)
+- [Documentation](https://lucianolorenti.github.io/SpectralClustering.jl/latest)
+- Check out the [Examples](https://lucianolorenti.github.io/SpectralClustering.jl/latest/notebooks/Index.html)
 
 The library provides functions that allow:
-* Build the affinity matrix. 
-* Perform the embedding of the patterns in the space spanned by the eigenvectors of the matrices derived from the affinity matrix. 
+* Build the affinity matrix.
+* Perform the embedding of the patterns in the space spanned by the eigenvectors of the matrices derived from the affinity matrix.
     * Obtain an approximation of the eigenvectors in order to reduce the computational complexity.
     * Exploiting information from multiple views. Corresponding nodes in each graph should have the same cluster membership.
 * Clusterize the eigenvector space.
@@ -30,9 +30,6 @@ The library provides functions that allow:
   * TODO [Incremental spectral clustering by efficiently updating the eigen-system](https://www.sciencedirect.com/science/article/pii/S0031320309002209/pdfft?md5=dc50ecba5ab9ab23ea239ef89244800a&pid=1-s2.0-S0031320309002209-main.pdf)
 * Clusterize
   * [Multiclass Spectral Clustering](http://www.public.asu.edu/~jye02/CLASSES/Spring-2007/Papers/PAPERS/295_yu_s.pdf)
-  * KMeans via [Clustering.jl](https://github.com/JuliaStats/Clustering.jl) 
+  * KMeans via [Clustering.jl](https://github.com/JuliaStats/Clustering.jl)
 
-
-
-The documentation and the library is still a work in progress. 
-
+The documentation and the library is still a work in progress.

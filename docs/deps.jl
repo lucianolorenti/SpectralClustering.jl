@@ -1,13 +1,12 @@
 packages = ["Documenter","Formatting", "Images", "TestImages", 
 "RDatasets", "InfoZIP", "ImageView", "ImageMagick","Mustache", 
-"StringEncodings", "TextAnalysis", "Latexify"]
+"StringEncodings", "TextAnalysis", "Latexify", "IJulia"]
 for p in packages
     try
         if Pkg.installed(p) == nothing
-		Pkg.add(p)
+            Pkg.add(p)
 	end
     catch e
-	println(e)
         Pkg.add(p)
     end        
 end
