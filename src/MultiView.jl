@@ -74,6 +74,30 @@ function embedding(cfg::CoRegularizedMultiView, X::Vector)
     return (U[1], differences)
 end
 
+type KernelAddition <: EigenvectorEmbedder
+    embedder::EigenvectorEmbedder    
+end
+function embedding(cfg::KernelAddition, X::Vector)
+    local W = weight_matrix(X[1])
+    for j=2:length(X)
+        W = W + weight_matrix(X[j])
+    end
+    (L,d)  =laplacian_matrix(W)
+    return embedding(cfg.embedder, L)
+    
+end
+type KernelProduct <: EigenvectorEmbedder
+    embedder::EigenvectorEmbedder
+end
+function embedding(cfg::KernelProduct, X::Vector)
+    local W = weight_matrix(X[1])
+    for j=2:length(X)
+        W = W .* weight_matrix(X[j])
+    end
+    (L,d)  =laplacian_matrix(W)
+    return embedding(cfg.embedder, L)
+end
+
 """
 type LargeScaleMultiView
 # Large-Scale Multi-View Spectral Clustering via Bipartite Graph. In AAAI (pp. 2750-2756).
