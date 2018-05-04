@@ -103,6 +103,36 @@ function incidence(g::Graph)
   end
   return m
 end
+
+"""
+    ng_laplacian(W::SparseMatrixCSC)
+
+Returns the laplacian matrix of the weight_matrix ´´´W´´´ according to ""On Spectral Clustering: Analysis and
+an algorithm"" of Andrew Y. Ng, Michael I. Jordan and Yair Weiss.
+
+\$L = D^{-\\frac{1}{2}} W D^{-\\frac{1}{2}}\$
+
+"""
+function ng_laplacian(W::SparseMatrixCSC)
+    d = vec(sum(W,1))
+    return ng_laplacian(W,d)
+end
+
+"""
+    ng_laplacian(W::SparseMatrixCSC, d::Vector)
+
+Returns the laplacian matrix of the weight matrix ´´´W´´´ and the degree vector ´´´d´´´  according to ""On Spectral Clustering: Analysis and
+an algorithm"" of Andrew Y. Ng, Michael I. Jordan and Yair Weiss.
+
+\$L = D^{-\\frac{1}{2}} W D^{-\\frac{1}{2}}\$
+
+"""
+function ng_laplacian(W::SparseMatrixCSC, d::Vector)
+    d[d.<0]= 0
+    d[d.!=0] =d[d.!=0].^-0.5
+    Dinv = spdiagm(d)
+    return (Dinv*W*Dinv, Dinv)
+end
 """
     ng_laplacian(g::Graph)
 
@@ -114,11 +144,7 @@ an algorithm"" of Andrew Y. Ng, Michael I. Jordan and Yair Weiss.
 """
 function ng_laplacian(g::Graph)
     (W,d) = weight_matrix(g)
-    d= vec(d)
-    d[d.<0]= 0
-    d[d.!=0] =d[d.!=0].^-0.5
-    Dinv = spdiagm(d)
-    return (Dinv*W*Dinv, Dinv)
+    return ng_laplacian(W,vec(d))
 end
 function laplacian(W::SparseMatrixCSC)
   d = vec(sum(W,1))

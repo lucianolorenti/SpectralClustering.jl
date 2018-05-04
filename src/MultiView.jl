@@ -1,6 +1,8 @@
 export embedding,
        View,
-        CoRegularizedMultiView
+    CoRegularizedMultiView,
+    KernelProduct,
+    KernelAddition
 
 """
 A view
@@ -38,7 +40,7 @@ embedding(cfg::CoRegularizedMultiView, X::Vector)
 
 An example that shows how to use this methods is provied in the Usage section of the manual
 """
-function embedding(cfg::CoRegularizedMultiView, X::Vector)
+function embedding(cfg::CoRegularizedMultiView, X::Vector; disagreement::Union{Void,Vector} = nothing)
     local U = Vector{Matrix}(length(cfg.views))
     local Laplacians = [ ng_laplacian(X[i])[1] for i=1:length(cfg.views) ]
     #Initialize all U(v),2≤v≤m$
@@ -47,7 +49,6 @@ function embedding(cfg::CoRegularizedMultiView, X::Vector)
     end
     local curr_objective = -Inf
     local prev_objective = 0
-    local differences = []
     local best_objective = Inf
     local iterations_without_improvement = 0
     while (abs(curr_objective - prev_objective)  > cfg.threshold) && (iterations_without_improvement < 5)
@@ -67,11 +68,13 @@ function embedding(cfg::CoRegularizedMultiView, X::Vector)
             else
                 iterations_without_improvement=iterations_without_improvement+1
             end
-            push!(differences, curr_objective)
+            if (disagreement!=nothing)
+                push!( disagreement, curr_objective)
+            end
             
         end
     end
-    return (U[1], differences)
+    return U[1]
 end
 
 type KernelAddition <: EigenvectorEmbedder
@@ -82,20 +85,18 @@ function embedding(cfg::KernelAddition, X::Vector)
     for j=2:length(X)
         W = W + weight_matrix(X[j])
     end
-    (L,d)  =laplacian_matrix(W)
-    return embedding(cfg.embedder, L)
-    
+    return  embedding(cfg.embedder, W)
 end
 type KernelProduct <: EigenvectorEmbedder
     embedder::EigenvectorEmbedder
 end
 function embedding(cfg::KernelProduct, X::Vector)
-    local W = weight_matrix(X[1])
+    local (W,_) = weight_matrix(X[1])
     for j=2:length(X)
-        W = W .* weight_matrix(X[j])
+        (W_1,_) = weight_matrix(X[j])
+        W = W .* W_1
     end
-    (L,d)  =laplacian_matrix(W)
-    return embedding(cfg.embedder, L)
+    return embedding(cfg.embedder, W)
 end
 
 """

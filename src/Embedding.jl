@@ -32,23 +32,12 @@ type NgLaplacian <: AbstractEmbedding
 end
 """
 ```julia
-embedding(cfg::NgLaplacian, gr::Graph)
+embedding(cfg::NgLaplacian, L::Union{Matrix,SparseMatrixCSC, Graph})
 ```
-Performs the eigendecomposition of the matrix \$ L \$ derived from the graph `gr`. The matrix \$ L \$ is defined according to [`NgLaplacian`](@ref)
-
+Performs the eigendecomposition of the laplacian matrix of the weight matrix \$ W \$ defined according to [`NgLaplacian`](@ref)
 """
-function embedding(cfg::NgLaplacian, gr::Graph)
-    (L, a) = ng_laplacian(gr)
-    a=nothing
-    return embedding(cfg,L)
-end
-"""
-```julia
-embedding(cfg::NgLaplacian, L::Union{Matrix,SparseMatrixCSC})
-```
-Performs the eigendecomposition of the matrix \$ L \$ defined according to [`NgLaplacian`](@ref)
-"""
-function embedding(cfg::NgLaplacian, L::Union{Matrix,SparseMatrixCSC})
+function embedding(cfg::NgLaplacian, W::Union{Matrix,SparseMatrixCSC, Graph})
+    (L,d) = ng_laplacian(W)
     (vals,vec) = eigs(L,nev  = cfg.nev, which = :LM, maxiter=1000)
     vec        = real(vec)
     if cfg.nev == 1
