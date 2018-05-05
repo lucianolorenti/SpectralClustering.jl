@@ -59,6 +59,7 @@ function embedding(cfg::CoRegularizedMultiView, X::Vector; disagreement::Union{V
                     L = L + cfg.views[i].lambda*U[j]*U[j]'
                 end
             end
+            println(typeof(L))
             U[i] = embedding(cfg.views[i].embedder, L)
             prev_objective = curr_objective
             curr_objective = sum([trace((U[i]*U[i]')*(U[j]*U[j]')) for j=1:length(U)  for d=1:length(U)])
