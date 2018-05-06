@@ -34,15 +34,6 @@ type NgLaplacian <: AbstractEmbedding
 end
 
 
-"""
-```julia
-embedding(cfg::NgLaplacian, gr::Graph)
-```
-Performs the eigendecomposition of the laplacian matrix of the weight matrix \$ W \$ derived from the graph `gr` defined according to [`NgLaplacian`](@ref)
-"""
-function embedding(cfg::NgLaplacian, gr::Graph)
-   return embedding(cfg, adjacency_matrix(gr, dir=:both))
-end
 
 """
 ```julia
@@ -224,34 +215,55 @@ function embedding(cfg::YuShiPopout, grA::Graph, grR::Graph)
     vec            = real(vec[:,indexes])
     return vec./ mapslices(norm,vec,2)
 end
+
+
+
 """
 ```julia
-embedding(cfg::ShiMalikLaplacian, gr::Union{Graph,SparseMatrixCSC})
+embedding(cfg::NgLaplacian, W::CombinatorialAdjacency)
+```
+Performs the eigendecomposition of the laplacian matrix of the weight matrix \$ W \$ defined according to [`NgLaplacian`](@ref)
+"""
+function embedding(cfg::ShiMalikLaplacian, W::CombinatorialAdjacency)
+    return embedding(cfg, NormalizedLaplacian(NormalizedAdjacency(W)))
+end
+"""
+```julia
+embedding(cfg::ShiMalikLaplacian, L::NormalizedLaplacian)
 ```
 # Parameters
 -   `cfg::ShiMalikLaplacian`. An instance of a [`ShiMalikLaplacian`](@ref)  that specify the number of eigenvectors to obtain
 - `gr::Union{Graph,SparseMatrixCSC}`. The `Graph`(@ref Graph) or the weight matrix of wich is going to be computed the normalized laplacian matrix.
 
 Performs the eigendecomposition of the normalized laplacian matrix of
-the graph `gr` defined acoording to [`ShiMalikLaplacian`](@ref). Returns
+the laplacian matriz `L` defined acoording to [`ShiMalikLaplacian`](@ref). Returns
 the cfg.nev eigenvectors associated with the non-zero smallest
 eigenvalues.
 """
-function embedding(cfg::ShiMalikLaplacian, gr::Union{Graph,SparseMatrixCSC})
-    (L, Dinvhalf)  = normalized_laplacian(gr)
-    (vals,vec) = eigs(L,nev  = cfg.nev + 50, which = :SM, maxiter=1000)
+function embedding(cfg::ShiMalikLaplacian, L::NormalizedLaplacian)    
+    (vals,vec) = eigs(L, nev  = cfg.nev + 50, which = :SR, maxiter=1000)
     idxs = find(real(vals).>0.0000001)
     idxs = idxs[1:min(length(idxs),cfg.nev)]
-    vec=Dinvhalf*real(vec[:,idxs])
+    vec=spdiagm(L.A.A.D.^(1/2))*real(vec[:,idxs])
     return vec./ mapslices(norm,vec,2)
 end
 """
 ```
 embedding{T<:AbstractEmbedding}(cfg::T, neighborhood::VertexNeighborhood, oracle::Function, data)
 ```
-"""
-function embedding{T<:AbstractEmbedding}(cfg::T, neighborhood::VertexNeighborhood,  oracle::Function, data)
+""" 
+function embedding(cfg::T, neighborhood::VertexNeighborhood,  oracle::Function, data) where T<:AbstractEmbedding
     graph = create(cfg.graph_creator,data)
     return embedding(cfg,graph)
 end
 
+
+"""
+```julia
+embedding(cfg::T, gr::Graph) where T<:AbstractEmbedding
+```
+Performs the eigendecomposition of the laplacian matrix of the weight matrix \$ W \$ derived from the graph `gr` defined according to [`NgLaplacian`](@ref)
+"""
+function embedding(cfg::T, gr::Graph) where T<:AbstractEmbedding
+    return embedding(cfg, CombinatorialAdjacency(adjacency_matrix(gr, dir=:both)))
+end

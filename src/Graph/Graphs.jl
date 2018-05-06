@@ -103,12 +103,7 @@ function ne(g::Graph)
     return sum([v.number_of_edges for v in g.vertices])
 end
 function has_edge(gr::Graph, i::Integer, k::Integer)
-    for e in gr.vertices[i]
-        if (target_vertex(e,gr.vertices[i]) == gr.vertices[k])
-            return true
-        end
-    end
-    return false
+    return (k in gr.vertices[i].connections)
 end
 function insert!(v::Vertex,e::Edge)
     if (e.v1 == v)
