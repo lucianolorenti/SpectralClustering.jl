@@ -5,12 +5,16 @@ export
        connect!,
        disconnect,
        remove_vertex!,
-       number_of_vertices,
        reindex!,
        random_graph,
        target_vertex,
        cycles,
-        number_of_neighbors
+    number_of_neighbors
+
+using LightGraphs
+
+import LightGraphs: nv, ne, has_edge, is_directed
+
 import Base.start
 import Base.next
 import Base.done
@@ -24,24 +28,24 @@ type Edge
 """
 type Edge{T}
     next_v1::Union{Void,Edge{T}}
-  prev_v1::Union{Void,Edge{T}}
-  next_v2::Union{Void,Edge{T}}
-  prev_v2::Union{Void,Edge{T}}
-  v1
-  v2
-  weight::T
+    prev_v1::Union{Void,Edge{T}}
+    next_v2::Union{Void,Edge{T}}
+    prev_v2::Union{Void,Edge{T}}
+    v1
+    v2
+    weight::T
 end
 function weight_type(edge::Edge{T}) where T
     return T
 end
 type Vertex{T, EdgeType}
-   id::Integer
-   data::T
-   edges::Union{Void,Edge{EdgeType}}
-   number_of_edges::Integer
-   degree::Float64
-   connections::Set{Integer}
-   lock::Threads.TatasLock
+    id::Integer
+    data::T
+    edges::Union{Void,Edge{EdgeType}}
+    number_of_edges::Integer
+    degree::Float64
+    connections::Set{Integer}
+    lock::Threads.TatasLock
 end
 function weight_type(v::Vertex{V,E}) where V where E
     return E
@@ -52,8 +56,8 @@ end
 function Edge(v1::Vertex,v2::Vertex,w::Number)
     return Edge{weight_type(v1)}(nothing,nothing,nothing,nothing,v1,v2,convert(weight_type(v1),w))
 end
-type Graph
-  vertices::Vector{Vertex}
+type Graph <: AbstractGraph{Integer}
+  vertices::Vector{Vertex} 
 
   is_dirty::Bool
 end
@@ -81,14 +85,25 @@ function Graph(n_vertices::Integer=0; vertex_type::DataType  = Any ,initial_valu
    end
    return Graph(vertices,false)
 end
+
+
+function is_directed(g::Graph)
+    return false
+end
 """
 ```julia
-number_of_vertices(g::Graph)
+nv(g::Graph)
 ```
 Return the number of vertices of `g`.
 """
-function number_of_vertices(g::Graph)
+function nv(g::Graph)
     return length(g.vertices)
+end
+function ne(g::Graph)
+    return sum([v.number_of_edges for v in g.vertices])
+end
+function has_edge(gr::Graph, i::Integer, k::Integer)
+    return (k in gr.vertices[i].connections)
 end
 function insert!(v::Vertex,e::Edge)
     if (e.v1 == v)
@@ -117,25 +132,25 @@ function insert!(v::Vertex,e::Edge)
 end
 
 function set_previous(v::Vertex,e::Edge,prev::Union{Void,Edge})
-  if (e.v1 == v)
-    e.prev_v1=prev
-  else
-    e.prev_v2=prev
-  end
+    if (e.v1 == v)
+        e.prev_v1=prev
+    else
+        e.prev_v2=prev
+    end
 end
 
 function set_next(v::Vertex,e::Edge,next::Union{Void,Edge})
-  if (e.v1 == v)
-    e.next_v1=next
-  else
-    e.next_v2=next
-  end
+    if (e.v1 == v)
+        e.next_v1=next
+    else
+        e.next_v2=next
+    end
 end
 function linked_list_connect(v::Vertex,e::Edge,next::Union{Void,Edge})
-  set_next(v,e,next)
-  if (next != nothing)
-     set_previous(v,next,e)
-  end
+    set_next(v,e,next)
+    if (next != nothing)
+        set_previous(v,next,e)
+    end
 end
 function remove!(v::Vertex,e::Edge)
     if (e.v1 == v)
@@ -183,7 +198,7 @@ function connect!(g::Graph,i::Integer,j::Integer,w::Number)
     if (i==j)
         return
     end
-    if i>number_of_vertices(g) || j>number_of_vertices(g)
+    if i>nv(g) || j>nv(g)
       throw("Invalid vertex")
     end
     if (w<=0)
@@ -279,11 +294,11 @@ function show(io::IO, e::Edge)
   println(string(e.v1.id," -(",e.weight, ")> ",e.v2.id))
 end
 function show(io::IO, g::Graph)
-   for vertex in g.vertices
-     println(vertex)
-     for e in vertex
-       println(e)
-     end
+  for vertex in g.vertices
+         println(vertex)
+         for e in vertex
+           println(e)
+       end
    end
 end
 
@@ -323,7 +338,7 @@ function disconnect(g::Graph,i::Integer,j::Integer)
 end
 function update_connections!(g::Graph)
 
-   for i=1:number_of_vertices(g)
+   for i=1:nv(g)
        empty!(g.vertices[i].connections)
        for e in g.vertices[i]
             v_j = target_vertex(e, g.vertices[i])
@@ -333,7 +348,7 @@ function update_connections!(g::Graph)
 end
 
 function reindex!(g::Graph)
-   for i=1:number_of_vertices(g)
+   for i=1:nv(g)
        g.vertices[i].id = i
    end
    update_connections!(g)
@@ -346,7 +361,7 @@ remove_vertex!(g::Graph,i::Integer)
 Remove the `i`-th vertex.
 """
 function remove_vertex!(g::Graph,i::Integer)
-    if i>number_of_vertices(g)
+    if i>nv(g)
       throw("No se puede eliminar")
     end
     if (g.is_dirty)
@@ -371,7 +386,7 @@ function add_vertex!(g::Graph, datatype = Any, data=nothing)
    if g.is_dirty
       reindex!(g)
    end
-   new_id = number_of_vertices(g) +1
+   new_id = nv(g) +1
    vertex = Vertex(new_id,datatype, data)
    push!(g.vertices,vertex)
    return vertex
@@ -380,7 +395,7 @@ function connect(e::Edge, v::Vertex)
    return e.v1 == v || e.v2 == v
 end
 function number_of_neighbors(g::Graph)
-    number = zeros(Int,number_of_vertices(g))
+    number = zeros(Int,nv(g))
     for i=1:length(g.vertices)
         n=0
         for e in g.vertices[i]
@@ -401,7 +416,7 @@ function random_graph(iterations::Integer; probs=[0.4,0.4,0.2], weight=()->5, de
   g= Graph()
   for i=1:iterations
     action = sum(rand() .>= cumsum(probs)) +1
-    nog = number_of_vertices(g)
+    nog = nv(g)
     if action==1
         add_vertex!(g)
         if debug
@@ -497,33 +512,6 @@ function cycles(g::Graph)
     end
     return ciclos_vertices
 end
-
-#=facts("Ciclos") do
-    context("Prueba 1") do
-        g = Graph(8)
-        connect!(g,1,2,1)
-        connect!(g,2,3,1)
-        connect!(g,3,1,1)
-        connect!(g,1,4,1)
-        connect!(g,4,2,1)
-        connect!(g,2,8,1)
-        connect!(g,3,5,1)
-        connect!(g,3,7,1)
-        connect!(g,5,8,1)
-        connect!(g,5,7,1)
-        connect!(g,5,6,1)
-        a = cycles(g)
-        cycles_vertex_1 = collect(a[1])
-        @fact length(cycles_vertex_1) --> 2
-
-        for i=1:length(cycles_vertex_1)
-            edge_1 = [cycles_vertex_1[i].edge_1.vertex_id ,cycles_vertex_1[i].edge_2.vertex_id]
-            edge_1 = [maximum(edge_1),minimum(edge_1)];
-             @fact edge_1 == [4,2] || edge_1 == [3,2] --> true
-         end
-
-    end
-end=#
 
 include("Creation.jl")
 include("Matrices.jl")

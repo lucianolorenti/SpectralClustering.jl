@@ -22,8 +22,7 @@ makedocs(
         "Utility Modules" => Any[
                        "Data Access" => "man/data_access.md",
                        "Graph" => "man/graph.md",
-                       "Landmarks Selection" => "man/landmark_selection.md",
-                       "Graph Matrices" => "man/graphmatrices.md"
+                       "Landmarks Selection" => "man/landmark_selection.md"
         ],
    ],
   doctest = false
