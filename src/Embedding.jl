@@ -4,6 +4,8 @@ export embedding,
        YuShiPopout,
        PartialGroupingConstraints
 
+using LightGraphs
+using LightGraphs.LinAlg
 abstract type AbstractEmbedding <: EigenvectorEmbedder
 end
 
@@ -30,14 +32,35 @@ U is a matrix that contains the `nev`  largest eigevectors of \$ L \$.
 type NgLaplacian <: AbstractEmbedding
     nev::Integer
 end
+
+
+"""
+```julia
+embedding(cfg::NgLaplacian, gr::Graph)
+```
+Performs the eigendecomposition of the laplacian matrix of the weight matrix \$ W \$ derived from the graph `gr` defined according to [`NgLaplacian`](@ref)
+"""
+function embedding(cfg::NgLaplacian, gr::Graph)
+   return embedding(cfg, adjacency_matrix(gr, dir=:both))
+end
+
+"""
+```julia
+embedding(cfg::NgLaplacian, W::CombinatorialAdjacency)
+```
+Performs the eigendecomposition of the laplacian matrix of the weight matrix \$ W \$ defined according to [`NgLaplacian`](@ref)
+"""
+function embedding(cfg::NgLaplacian, W::CombinatorialAdjacency)
+    return embedding(cfg, NormalizedAdjacency(W))
+end
+
 """
 ```julia
 embedding(cfg::NgLaplacian, L::Union{Matrix,SparseMatrixCSC, Graph})
 ```
 Performs the eigendecomposition of the laplacian matrix of the weight matrix \$ W \$ defined according to [`NgLaplacian`](@ref)
 """
-function embedding(cfg::NgLaplacian, W::Union{Matrix,SparseMatrixCSC, Graph})
-    (L,d) = ng_laplacian(W)
+function embedding(cfg::NgLaplacian, L::NormalizedAdjacency)
     (vals,vec) = eigs(L,nev  = cfg.nev, which = :LM, maxiter=1000)
     vec        = real(vec)
     if cfg.nev == 1
