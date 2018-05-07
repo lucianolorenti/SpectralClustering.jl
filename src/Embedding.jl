@@ -52,8 +52,11 @@ embedding(cfg::NgLaplacian, L::Union{Matrix,SparseMatrixCSC, Graph})
 Performs the eigendecomposition of the laplacian matrix of the weight matrix \$ W \$ defined according to [`NgLaplacian`](@ref)
 """
 function embedding(cfg::NgLaplacian, L::NormalizedAdjacency)
-    (vals,vec) = eigs(L,nev  = cfg.nev, which = :LM, maxiter=1000)
+    (vals,vec) = eigs(L,nev  = cfg.nev+15, which = :LM, maxiter=1000)
     vec        = real(vec)
+    idxs = find(real(vals).<0.999999)
+    idxs = idxs[1:min(length(idxs),cfg.nev)]
+    vec  = vec[:,idxs]
     if cfg.nev == 1
       return vec
     else
@@ -237,7 +240,7 @@ the cfg.nev eigenvectors associated with the non-zero smallest
 eigenvalues.
 """
 function embedding(cfg::ShiMalikLaplacian, L::NormalizedLaplacian)    
-    (vals,vec) = eigs(L, nev  = cfg.nev + 50, which = :SR, maxiter=1000)
+    (vals,vec) = eigs(L, nev  = cfg.nev + 15, which = :SR, maxiter=1000)
     idxs = find(real(vals).>0.0000001)
     idxs = idxs[1:min(length(idxs),cfg.nev)]
     vec=spdiagm(L.A.A.D.^(1/2))*real(vec[:,idxs])
