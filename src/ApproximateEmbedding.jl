@@ -1,4 +1,5 @@
-using Clustering
+using Clustering,
+   LightGraphs
 export NystromMethod,
        LandmarkBasedRepresentation,
        DNCuts
@@ -332,15 +333,16 @@ function embedding(d::DNCuts, W)
     local matrices = []
     local img_size = d.img_size
     for j=1:d.scales
-        local idx = pixel_decimate(img_size,W,2)
-        local B   = W[:,idx]
-        local C   = normalize_columns(B')'
-        push!(matrices,C)
-        W = C'*B
-        img_size = (round(Int,img_size[1]/2), round(Int,img_size[2]/2))
+        @time local idx = pixel_decimate(img_size,W,2)
+        @time local B   = W[:,idx]
+        @time local C   = normalize_columns(B')'
+        @time push!(matrices,C)
+        @time W = C'*B
+        @time img_size = (round(Int,img_size[1]/2), round(Int,img_size[2]/2))
     end
-    local ss = ShiMalikLaplacian(d.nev)
-    local V  = real(embedding(ss, W))
+    local ss = NgLaplacian(d.nev)
+    println(W)
+    local V  = real(embedding(ss, CombinatorialAdjacency(W)))
     for s=d.scales:-1:1
         V = matrices[s]*V
     end

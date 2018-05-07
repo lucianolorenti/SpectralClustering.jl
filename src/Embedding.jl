@@ -104,8 +104,8 @@ Partial grouping constraint structure. This sturct is passed to eigs to
 performe the L*x computation according to (41), (42) and (43) of
 ""Segmentation Given Partial Grouping Constraints""
 """
-struct PGCMatrix{T,I,F} <: AbstractMatrix{T}
-    W::SparseMatrixCSC{T, I}
+struct PGCMatrix{T,F} <: AbstractMatrix{T}
+    W::NormalizedAdjacency{T}
     At::Matrix{F}
 end
 import Base.size
@@ -140,16 +140,16 @@ function restriction_matrix(nv::Integer,  restrictions::Vector{Vector{Integer}})
     return U
 end
 
-function embedding(cfg::PartialGroupingConstraints, L::SparseMatrixCSC,Dsqrtinv::SparseMatrixCSC, restrictions::Vector{Vector{Integer}})
-    U                 = restriction_matrix(size(L,1), restrictions)
-    (svd, n)          = svds(Dsqrtinv*U, nsv = length(restrictions))
+function embedding(cfg::PartialGroupingConstraints, L::NormalizedAdjacency, restrictions::Vector{Vector{Integer}})
+    local U           = restriction_matrix(size(L,1), restrictions)
+    (svd, n)          = svds(spdiagm(prescalefactor(L))*U, nsv = length(restrictions))
     (eigvals, eigvec) = eigs(PGCMatrix(L,svd.Vt),nev = cfg.nev, maxiter = 50000, which = :LM)
     eigvec            = real(eigvec)
-    return Dsqrtinv*eigvec
+    return spdiagm(prescalefactor(L))*eigvec
 end
 function embedding(cfg::PartialGroupingConstraints, gr::Graph, restrictions::Vector{Vector{Integer}})
-    (L, dinv)  = ng_laplacian(gr)
-    return embedding(cfg, L, dinv, restrictions)
+    local L  = NormalizedAdjacency(CombinatorialAdjacency(adjacency_matrix(gr)))
+    return embedding(cfg, L, restrictions)
 end
 
 """
@@ -179,15 +179,11 @@ function embedding(cfg::YuShiPopout,  grA::Graph, grR::Graph)
 - Understanding Popout through Repulsion. Stella X. Yu and Jianbo Shi
 """
 function embedding(cfg::YuShiPopout, grA::Graph, grR::Graph, restrictions::Vector{Vector{Integer}})
-    U                 = restriction_matrix(number_of_vertices(grA), restrictions)
-    (Wa,da)           = weight_matrix(Float32,grA)
-    (Wr,dr)           = weight_matrix(Float32,grR)
-    local da          = vec(sum(Wa,1))
+    local Wa          = adjacency_matrix(grA)
+    local Wr          = adjacency_matrix(grR)
     local dr          = vec(sum(Wr,1))
     local W           = Wa-Wr + spdiagm(dr)
-    local Dsqrtinv    = spdiagm(1./sqrt.(da+dr))
-    W                 = Dsqrtinv*W*Dsqrtinv
-    return embedding(PartialGroupingConstraints(cfg.nev), W, Dsqrtinv, restrictions)
+    return embedding(PartialGroupingConstraints(cfg.nev), NormalizedAdjacency(CombinatorialAdjacency(W)), restrictions)
 end
 
 """
@@ -200,20 +196,20 @@ function embedding(cfg::YuShiPopout,  grA::Graph, grR::Graph)
 - Understanding Popout through Repulsion. Stella X. Yu and Jianbo Shi
 """
 function embedding(cfg::YuShiPopout, grA::Graph, grR::Graph)
-    local Wa       = nothing
-    local Wr       = nothing
-    (Wa,da)        = weight_matrix(Float32,grA)
-    (Wr,dr)        = weight_matrix(Float32,grR)
+    local Wa       = adjacency_matrix(grA)
+    local Wr       = adjacency_matrix(grR)
+    local dr       = vec(sum(Wr,1))
+    local da       = vec(sum(Wa,1))
     local Weq      = Wa-Wr + spdiagm(dr)
     local Deq      = spdiagm(da+dr)
     Wa             = nothing
     da             = nothing
     Wr             = nothing
     dr             = nothing
-    (eigvals, vec) = eigs(Weq, Deq, nev = cfg.nev, tol=0.000001, maxiter = 10000, which = :LM)
+    (eigvals, eigvec) = eigs(Weq, Deq, nev = cfg.nev, tol=0.000001, maxiter = 10000, which = :LM)
     indexes        = sortperm(real(eigvals))
-    vec            = real(vec[:,indexes])
-    return vec./ mapslices(norm,vec,2)
+    eigvec            = real(eigvec[:,indexes])
+    return eigvec./ mapslices(norm,eigvec,2)
 end
 
 
