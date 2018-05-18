@@ -309,13 +309,6 @@ m,n = size(A)
 A_normalized = sparse(ei,ej,ev./S[ej],m,n)
 http://stackoverflow.com/questions/24296856/in-julia-how-can-i-column-normalize-a-sparse-matrix
 =#
-function normalize_cols(A)
-	for (col	,s) in enumerate(sum(A,1))
-          s == 0 && continue # What does a "normalized" column with a sum of zero look like?
-         A[:,col] = A[:,col]/s
-       end
-       return A
-end
 function normalize_columns(A :: SparseMatrixCSC)
           sums = sum(A,1)+ eps()
           I,J,V = findnz(A)
@@ -340,9 +333,8 @@ function embedding(d::DNCuts, W)
         W = C'*B
         img_size = (round(Int,img_size[1]/2), round(Int,img_size[2]/2))
     end
-    local ss = NgLaplacian(d.nev)
-    W = (W+W')/2
-    local V  = real(embedding(ss, CombinatorialAdjacency(W)))
+    local ss = ShiMalikLaplacian(d.nev)
+    local V  = real(embedding(ss, NormalizedLaplacian(NormalizedAdjacency(CombinatorialAdjacency(W)))))
     for s=d.scales:-1:1
         V = matrices[s]*V
     end

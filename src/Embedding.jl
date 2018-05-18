@@ -52,7 +52,7 @@ embedding(cfg::NgLaplacian, L::Union{Matrix,SparseMatrixCSC, Graph})
 Performs the eigendecomposition of the laplacian matrix of the weight matrix \$ W \$ defined according to [`NgLaplacian`](@ref)
 """
 function embedding(cfg::NgLaplacian, L::NormalizedAdjacency)
-    (vals,vec) = eigs(L,nev  = cfg.nev+15, which = :LM, maxiter=1000)
+    (vals,vec) = eigs(sparse(L),nev  = cfg.nev+15, which = :LM, maxiter=1000)
     vec        = real(vec)
     idxs = find(real(vals).<0.999999)
     idxs = idxs[1:min(length(idxs),cfg.nev)]
@@ -226,6 +226,9 @@ Performs the eigendecomposition of the laplacian matrix of the weight matrix \$ 
 function embedding(cfg::ShiMalikLaplacian, W::CombinatorialAdjacency)
     return embedding(cfg, NormalizedLaplacian(NormalizedAdjacency(W)))
 end
+
+
+
 """
 ```julia
 embedding(cfg::ShiMalikLaplacian, L::NormalizedLaplacian)
@@ -239,13 +242,14 @@ the laplacian matriz `L` defined acoording to [`ShiMalikLaplacian`](@ref). Retur
 the cfg.nev eigenvectors associated with the non-zero smallest
 eigenvalues.
 """
-function embedding(cfg::ShiMalikLaplacian, L::NormalizedLaplacian)    
-    (vals,vec) = eigs(L, nev  = cfg.nev + 15, which = :SR, maxiter=1000)
+function embedding(cfg::ShiMalikLaplacian, L::NormalizedLaplacian)
+    (vals,V) = eigs(sparse(L), nev  = cfg.nev + 50, which = :SM, maxiter=1000)
     idxs = find(real(vals).>0.0000001)
     idxs = idxs[1:min(length(idxs),cfg.nev)]
-    vec=spdiagm(L.A.A.D.^(1/2))*real(vec[:,idxs])
-    return vec./ mapslices(norm,vec,2)
+    V=spdiagm(L.A.A.D.^(1/2))*real(V[:,idxs])
+    return V./ mapslices(norm,V,2)
 end
+
 """
 ```
 embedding{T<:AbstractEmbedding}(cfg::T, neighborhood::VertexNeighborhood, oracle::Function, data)
