@@ -8,7 +8,7 @@ U \in {\mathbb R}^{n\times k} & \\
 \textrm{s.a.} & {U^T U}  =   I
 \end{array}$
 
-where $L = D^{-\frac{1}{2}}WD^{-\frac{1}{2}}$ is the laplacian matriz derived from $W$ according [ng2002spectral](#ng2002spectral) and $D$ is a diagonal matrix with the sum of the rows of $W$ located in its main diagonal. Once obtained $U$, their rows are considered as the new coordinates of the patterns. In this new representation is simpler to apply a tradicional clustering algorithm  [shi2000normalized](#shi2000normalized).
+where $L = D^{-\frac{1}{2}}WD^{-\frac{1}{2}}$ is the Laplacian matrix derived from $W$ according [ng2002spectral](#ng2002spectral) and $D$ is a diagonal matrix with the sum of the rows of $W$ located in its main diagonal. Once obtained $U$, their rows are considered as the new coordinates of the patterns. In this new representation is simpler to apply a traditional clustering algorithm  [shi2000normalized](#shi2000normalized).
 
 
 Spectral graph partitioning methods have been successfully
