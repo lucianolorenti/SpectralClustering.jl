@@ -122,18 +122,18 @@ function issymmetric(a::PGCMatrix)
     return true
 end
 function A_mul_B!(dest::AbstractVector, a::PGCMatrix, x::AbstractVector)
-    local z = x - a.At'*(a.At*x)
-    local y = a.W*z
+   z = x - a.At'*(a.At*x)
+   y = a.W*z
     dest[:]= y - a.At'*(a.At*y)
 end
 
 function restriction_matrix(nv::Integer,  restrictions::Vector{Vector{Integer}})
 
-    local number_of_restrictions = length(restrictions)
-    local U = spzeros(nv,nv)
-    local k = 0
+   number_of_restrictions = length(restrictions)
+   U = spzeros(nv,nv)
+   k = 0
     for j=1:number_of_restrictions
-        local U_t = restrictions[j]
+       U_t = restrictions[j]
         for s=1:length(U_t)-1
             k             = k+1
             U[U_t[s],k]   = 1
@@ -144,14 +144,14 @@ function restriction_matrix(nv::Integer,  restrictions::Vector{Vector{Integer}})
 end
 
 function embedding(cfg::PartialGroupingConstraints, L::NormalizedAdjacency, restrictions::Vector{Vector{Integer}})
-    local U           = restriction_matrix(size(L,1), restrictions)
+   U           = restriction_matrix(size(L,1), restrictions)
     (svd, n)          = svds(spdiagm(prescalefactor(L))*U, nsv = length(restrictions))
     (eigvals, eigvec) = eigs(PGCMatrix(L,svd.Vt),nev = cfg.nev, maxiter = 50000, which = :LM)
     eigvec            = real(eigvec)
     return spdiagm(prescalefactor(L))*eigvec
 end
 function embedding(cfg::PartialGroupingConstraints, gr::Graph, restrictions::Vector{Vector{Integer}})
-    local L  = NormalizedAdjacency(CombinatorialAdjacency(adjacency_matrix(gr)))
+   L  = NormalizedAdjacency(CombinatorialAdjacency(adjacency_matrix(gr)))
     return embedding(cfg, L, restrictions)
 end
 
@@ -182,10 +182,10 @@ function embedding(cfg::YuShiPopout,  grA::Graph, grR::Graph)
 - Understanding Popout through Repulsion. Stella X. Yu and Jianbo Shi
 """
 function embedding(cfg::YuShiPopout, grA::Graph, grR::Graph, restrictions::Vector{Vector{Integer}})
-    local Wa          = adjacency_matrix(grA)
-    local Wr          = adjacency_matrix(grR)
-    local dr          = vec(sum(Wr,1))
-    local W           = Wa-Wr + spdiagm(dr)
+   Wa          = adjacency_matrix(grA)
+   Wr          = adjacency_matrix(grR)
+   dr          = vec(sum(Wr,1))
+   W           = Wa-Wr + spdiagm(dr)
     return embedding(PartialGroupingConstraints(cfg.nev), NormalizedAdjacency(CombinatorialAdjacency(W)), restrictions)
 end
 
@@ -199,12 +199,12 @@ function embedding(cfg::YuShiPopout,  grA::Graph, grR::Graph)
 - Understanding Popout through Repulsion. Stella X. Yu and Jianbo Shi
 """
 function embedding(cfg::YuShiPopout, grA::Graph, grR::Graph)
-    local Wa       = adjacency_matrix(grA)
-    local Wr       = adjacency_matrix(grR)
-    local dr       = vec(sum(Wr,1))
-    local da       = vec(sum(Wa,1))
-    local Weq      = Wa-Wr + spdiagm(dr)
-    local Deq      = spdiagm(da+dr)
+   Wa       = adjacency_matrix(grA)
+   Wr       = adjacency_matrix(grR)
+   dr       = vec(sum(Wr,1))
+   da       = vec(sum(Wa,1))
+   Weq      = Wa-Wr + spdiagm(dr)
+   Deq      = spdiagm(da+dr)
     Wa             = nothing
     da             = nothing
     Wr             = nothing

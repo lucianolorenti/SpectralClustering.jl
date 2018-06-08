@@ -26,11 +26,11 @@ function get_element!(o::Matrix,  img::Matrix{C}, i::Vector{Integer}) where C<:C
 """
 function get_element!(o::D, img::Matrix{C}, i::Vector{<:Integer}) where D<:AbstractArray  where C<:Colorant
     rows,cols   = ind2sub(size(img),i)
-    local values = broadcast_getindex(img, rows,cols)
+   values = broadcast_getindex(img, rows,cols)
     @inbounds o[1,:] = cols
     @inbounds o[2,:] = rows
-    local N = length(C)
-    local component = N >= 3 ? (comp1, comp2, comp3, alpha) : (comp1, alpha)
+   N = length(C)
+   component = N >= 3 ? (comp1, comp2, comp3, alpha) : (comp1, alpha)
     for j=1:length(C)
         @inbounds o[2+j,:] = component[j].(values)
     end
@@ -43,8 +43,8 @@ function assign!(vec::T, val::C) where T<:AbstractArray where C<:Colorant
 This function assigns the components of the color component val to a vector v
 """
 function assign!(vec::T, val::C) where T<:AbstractArray where C<:Colorant
-    local N = length(C)
-    local component = N >= 3 ? (comp1, comp2, comp3, alpha) : (comp1, alpha)
+   N = length(C)
+   component = N >= 3 ? (comp1, comp2, comp3, alpha) : (comp1, alpha)
     for j=1:length(C)
         @inbounds vec[j] = component[j](val)
     end
@@ -59,7 +59,7 @@ Return through```vec``` the intensity image element  [x,y, i], where \$x,y\$ are
 position of the pixel and the value i of the pixel \$(x,y)\$.
 """
 function get_element!(vec::T,  img::Matrix{C}, i::Integer) where T<:AbstractArray where C<:Colorant
-    local ind    = spatial_position(img,i)
+   ind    = spatial_position(img,i)
     
     @inbounds vec[1] = ind[2]
     @inbounds vec[2] = ind[1]
@@ -74,13 +74,13 @@ function get_element( img::Matrix{RGB}, i::Vector)
 ```
 """
 function get_element( img::Matrix{T}, i::Vector)  where T<:Colorant
-    local m = zeros(length(T)+2,length(i))
+   m = zeros(length(T)+2,length(i))
     get_element!(m,img,i)
     return m
 end
 
 function get_element( img::Matrix{T}, i::Integer)  where T<:Colorant
-    local m = zeros(length(T)+2)
+   m = zeros(length(T)+2)
     get_element!(m,img,i)
     return m
 end

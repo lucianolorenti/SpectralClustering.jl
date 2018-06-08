@@ -31,7 +31,7 @@ makedocs(
 notebook_output_dir =   joinpath(dirname(@__FILE__), "build","notebooks")
 using IJulia
 for file in readdir(joinpath(dirname(@__FILE__), "notebooks"))
-    local full_path = joinpath(dirname(@__FILE__), "notebooks", file)
+   full_path = joinpath(dirname(@__FILE__), "notebooks", file)
     if (endswith(file,".ipynb"))
 	run(`$(IJulia.jupyter) nbconvert --template=nbextensions --to html $full_path --output-dir=$notebook_output_dir`)
     else

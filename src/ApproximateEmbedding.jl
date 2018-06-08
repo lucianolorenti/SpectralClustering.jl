@@ -141,22 +141,22 @@ function create_A_B(cfg::NystromMethod, landmarks::Vector{<:Integer}, X)
 end
 
 function create_A_B_single_thread(cfg::NystromMethod, landmarks::Vector{<:Integer}, X)
-    local n         = number_of_patterns(X)
-    local p         = length(landmarks)
-    local indexes_b = setdiff(collect(1:n), landmarks)
-    local m         = length(indexes_b)
+   n         = number_of_patterns(X)
+   p         = length(landmarks)
+   indexes_b = setdiff(collect(1:n), landmarks)
+   m         = length(indexes_b)
     n               = p
-    local A         = zeros(Float32,p,p)
-    local B         = zeros(Float32,p,m)
-    local qq = length(get_element(X,1))
-    local landmarks_m = zeros(Float32,length(get_element(X,1)), length(landmarks))
+   A         = zeros(Float32,p,p)
+   B         = zeros(Float32,p,m)
+   qq = length(get_element(X,1))
+   landmarks_m = zeros(Float32,length(get_element(X,1)), length(landmarks))
     for j = 1:length(landmarks)
        get_element!(view(landmarks_m,:,j),X,landmarks[j])
     end
     for j=1:length(landmarks)
       A[:,j] = cfg.w(landmarks[j], landmarks, view(landmarks_m,:,j), landmarks_m )
     end
-    local vec_k = zeros(Float32,length(get_element(X,1)))
+   vec_k = zeros(Float32,length(get_element(X,1)))
     for k=1:length(indexes_b)
        get_element!(vec_k,X,indexes_b[k])
        B[:,k] = cfg.w(indexes_b[k], landmarks, vec_k, landmarks_m)
@@ -210,8 +210,8 @@ embedding(cfg::NystromMethod, landmarks::Vector{Int}, X)
 Performs the eigenvector embedding according to
 """
 function embedding(cfg::NystromMethod, landmarks::Vector{<:Integer}, X)
-    local A = nothing
-    local B = nothing
+   A = nothing
+   B = nothing
     if (cfg.threaded)
         (A,B)     = create_A_B(cfg,landmarks,X)
     else
@@ -221,9 +221,9 @@ function embedding(cfg::NystromMethod, landmarks::Vector{<:Integer}, X)
 end
 
 function compute_dhat(AA::Matrix{T}, BB::Matrix{T}) where T
-    local n    = size(AA,1)
-    local m    = size(BB,2)
-    local dhat = zeros(T,n+m)
+   n    = size(AA,1)
+   m    = size(BB,2)
+   dhat = zeros(T,n+m)
     #d1        = sum(vcat(A,B'),1)
     dhat[1:n]  = sum(AA,1) + sum(BB,2)'
     #d2        = sum(B,1) + sum(B',1)*pinv(A)*B
@@ -232,21 +232,21 @@ function compute_dhat(AA::Matrix{T}, BB::Matrix{T}) where T
     return 1./(sqrt.(dhat).+eps())
 end
 function compute_V(AA::Matrix{T}, BB::Matrix{T}, nvec::Integer) where T<:Number
-    local n    = size(AA,1)
-    local m    = size(BB,2)
-    local Asi  = real(sqrtm(Symmetric(pinv(AA))))
-    local F    = svdfact(  AA+((Asi*(BB*BB'))*Asi) )
-    local V_1  = (Asi*F[:U]).*vec((1./(sqrt.(F[:S])+eps())))'
-    local VA   = AA*V_1[:,1:nvec+1]
-    local VB   = BB'*V_1[:,1:nvec+1]
+   n    = size(AA,1)
+   m    = size(BB,2)
+   Asi  = real(sqrtm(Symmetric(pinv(AA))))
+   F    = svdfact(  AA+((Asi*(BB*BB'))*Asi) )
+   V_1  = (Asi*F[:U]).*vec((1./(sqrt.(F[:S])+eps())))'
+   VA   = AA*V_1[:,1:nvec+1]
+   VB   = BB'*V_1[:,1:nvec+1]
     return vcat(VA,VB)
 end
 function normalize_A_and_B!(AA::Matrix, BB::Matrix)
-    local n    = size(AA,1)
-    local m    = size(BB,2)
-    local dhat = compute_dhat(AA,BB)
-    local vv   = view(dhat,1:n)
-    local vb   = view(dhat,n+(1:m))
+   n    = size(AA,1)
+   m    = size(BB,2)
+   dhat = compute_dhat(AA,BB)
+   vv   = view(dhat,1:n)
+   vb   = view(dhat,n+(1:m))
     for I in CartesianRange(size(AA))
         @inbounds AA[I] *=vv[I[1]]*vv[I[2]]
     end
@@ -260,12 +260,12 @@ embedding(cfg::NystromMethod, A::Matrix, B::Matrix, landmarks::Vector{Int})
 Performs the eigenvector approximation given the two submatrices A and B.
 """
 function embedding(cfg::NystromMethod, AA::Matrix, BB::Matrix, landmarks::Vector{<:Integer})
-    local n         = size(AA,1)
-    local m         = size(BB,2)
+   n         = size(AA,1)
+   m         = size(BB,2)
     normalize_A_and_B!(AA,BB)
-    local V = compute_V(AA,BB, cfg.nvec)
-    local indexes_b = setdiff(collect(1:(n+m)), landmarks)
-    local indexes   = sortperm(vcat(landmarks,indexes_b))
+   V = compute_V(AA,BB, cfg.nvec)
+   indexes_b = setdiff(collect(1:(n+m)), landmarks)
+   indexes   = sortperm(vcat(landmarks,indexes_b))
 
     for i = 2:cfg.nvec+1
         V[:,i] = V[:,i] ./V[:,1]
@@ -323,18 +323,18 @@ embedding(d::DNCuts, L)
 ```
 """
 function embedding(d::DNCuts, W)
-    local matrices = []
-    local img_size = d.img_size
+   matrices = []
+   img_size = d.img_size
     for j=1:d.scales
-        local idx = pixel_decimate(img_size,W,2)
-        local B   = W[:,idx]
-        local C   = normalize_columns(B')'
+       idx = pixel_decimate(img_size,W,2)
+       B   = W[:,idx]
+       C   = normalize_columns(B')'
         push!(matrices,C)
         W = C'*B
         img_size = (round(Int,img_size[1]/2), round(Int,img_size[2]/2))
     end
-    local ss = ShiMalikLaplacian(d.nev)
-    local V  = real(embedding(ss, NormalizedLaplacian(NormalizedAdjacency(CombinatorialAdjacency(W)))))
+   ss = ShiMalikLaplacian(d.nev)
+   V  = real(embedding(ss, NormalizedLaplacian(NormalizedAdjacency(CombinatorialAdjacency(W)))))
     for s=d.scales:-1:1
         V = matrices[s]*V
     end
