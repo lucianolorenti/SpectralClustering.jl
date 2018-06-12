@@ -41,16 +41,17 @@ embedding(cfg::CoRegularizedMultiView, X::Vector)
 An example that shows how to use this methods is provied in the Usage section of the manual
 """
 function embedding(cfg::CoRegularizedMultiView, X::Vector; disagreement::Union{Void,Vector} = nothing)
-   U = Vector{Matrix}(length(cfg.views))
-   Laplacians = [ ng_laplacian(X[i])[1] for i=1:length(cfg.views) ]
+    U = Vector{Matrix}(length(cfg.views))
+    
+    Laplacians = [ sparse(NormalizedAdjacency(CombinatorialAdjacency(adjacency_matrix(X[i], dir=:both))))  for i=1:length(cfg.views) ]
     #Initialize all U(v),2≤v≤m$
     for i=2:length(cfg.views)
         U[i] =  embedding(cfg.views[i].embedder,Laplacians[i])
     end
-   curr_objective = -Inf
-   prev_objective = 0
-   best_objective = Inf
-   iterations_without_improvement = 0
+    curr_objective = -Inf
+    prev_objective = 0
+    best_objective = Inf
+    iterations_without_improvement = 0
     while (abs(curr_objective - prev_objective)  > cfg.threshold) && (iterations_without_improvement < 5)
         for i=1:length(cfg.views)
            L = Laplacians[i]

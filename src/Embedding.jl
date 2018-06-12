@@ -47,12 +47,20 @@ end
 
 """
 ```julia
-embedding(cfg::NgLaplacian, L::Union{Matrix,SparseMatrixCSC, Graph})
+embedding(cfg::NgLaplacian, L::NormalizedAdjacency)
 ```
 Performs the eigendecomposition of the laplacian matrix of the weight matrix \$ W \$ defined according to [`NgLaplacian`](@ref)
 """
-function embedding(cfg::NgLaplacian, L::NormalizedAdjacency)
-    (vals,vec) = eigs(sparse(L),nev  = cfg.nev+15, which = :LM, maxiter=1000)
+embedding(cfg::NgLaplacian, L::NormalizedAdjacency) = embedding(cfg, sparse(L))
+
+"""
+```julia
+embedding(cfg::NgLaplacian, L::SparseMatrixCSC)
+```
+Performs the eigendecomposition of the laplacian matrix of the weight matrix \$ W \$ defined according to [`NgLaplacian`](@ref)
+"""
+function embedding(cfg::NgLaplacian, L::Matrix)
+    (vals,vec) = eigs(L ,nev  = cfg.nev+15, which = :LM, maxiter=1000)
     vec        = real(vec)
     idxs = find(real(vals).<0.999999)
     idxs = idxs[1:min(length(idxs),cfg.nev)]
@@ -62,7 +70,8 @@ function embedding(cfg::NgLaplacian, L::NormalizedAdjacency)
     else
       return vec./ mapslices(norm,vec,2)
     end
-end
+end    
+
 doc"""
 The normalized laplacian as defined in  \$ D^{-\\frac{1}{2}} (D-W) D^{-\\frac{1}{2}} \$.
 
