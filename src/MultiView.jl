@@ -82,9 +82,9 @@ type KernelAddition <: EigenvectorEmbedder
     embedder::EigenvectorEmbedder    
 end
 function embedding(cfg::KernelAddition, X::Vector)
-    (W,_) = weight_matrix(X[1])
+    W = adjacency_matrix(X[1])
     for j=2:length(X)
-        (W_1,_) = weight_matrix(X[j])
+        W_1 = adjacency_matrix(X[j])
         W = W + W_1
     end
     return  embedding(cfg.embedder, W)
@@ -93,9 +93,9 @@ type KernelProduct <: EigenvectorEmbedder
     embedder::EigenvectorEmbedder
 end
 function embedding(cfg::KernelProduct, X::Vector)
-    (W,_) = weight_matrix(X[1])
+    W = adjacency_matrix(X[1])
     for j=2:length(X)
-        (W_1,_) = weight_matrix(X[j])
+        W_1 = adjacency_matrix(X[j])
         W = W .* W_1
     end
     return embedding(cfg.embedder, W)
