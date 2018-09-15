@@ -3,3 +3,4 @@ ColorTypes
 NearestNeighbors
 Clustering
 StatsBase
+LightGraphs
