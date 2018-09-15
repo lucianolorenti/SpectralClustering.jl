@@ -83,15 +83,15 @@ type MS3 <: AbstractLandmarkSelection
     sim::Function
 end
 function select_landmarks(c::MS3, m::Integer, X)
-    local cant = number_of_patterns(X)
-    local points  = [rand(1:cant); rand(1:cant)]
+   cant = number_of_patterns(X)
+   points  = [rand(1:cant); rand(1:cant)]
     while (length(points)<m)
-        local T_candidates  = setdiff(1:cant, points)
-        local T = rand(T_candidates, round(Integer,length(T_candidates)*c.proportion))
-        local min_simmilarity = Inf
-        local min_point = 0        
+       T_candidates  = setdiff(1:cant, points)
+       T = rand(T_candidates, round(Integer,length(T_candidates)*c.proportion))
+       min_simmilarity = Inf
+       min_point = 0        
         for t in T
-            local simmilarity = 0            
+           simmilarity = 0            
             for p in points
                 simmilarity = simmilarity + c.sim(get_element(X,p), get_element(X,t))^2
             end

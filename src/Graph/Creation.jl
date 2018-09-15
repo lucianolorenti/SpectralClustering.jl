@@ -132,7 +132,7 @@ Create the [`KNNNeighborhood`](@ref) type by building a `k`-nn tre from de data 
 Return the indexes of the `config.k` nearest neigbors of the data point `j` of the data `X`.
 """
 function KNNNeighborhood(X, k::Integer, f::Function=x->x)
-    local tree = KDTree(hcat([f(get_element(X,j)) for j=1:number_of_patterns(X)]...))
+   tree = KDTree(hcat([f(get_element(X,j)) for j=1:number_of_patterns(X)]...))
     return KNNNeighborhood(k, tree, f)
 end
 function neighbors(config::KNNNeighborhood,j::Integer,X)
@@ -151,12 +151,12 @@ struct RandomNeighborhood <: VertexNeighborhood
     k::Integer
 end
 function neighbors(config::RandomNeighborhood, j::Integer, X)
-    local samples = StatsBase.sample(1:number_of_patterns(X),config.k,replace=false)
+   samples = StatsBase.sample(1:number_of_patterns(X),config.k,replace=false)
     if (in(j, samples))
         filter!(e->e!=j,samples)
     end
     while (length(samples) < config.k)
-        local s  =  StatsBase.sample(1:number_of_patterns(X), 1)[1]
+       s  =  StatsBase.sample(1:number_of_patterns(X), 1)[1]
         if (s!=j)
             push!(samples,s)
         end
@@ -182,13 +182,13 @@ create(w_type::DataType, neighborhood::VertexNeighborhood, oracle::Function,X)
 Given a [`VertexNeighborhood`](@ref), a simmilarity function `oracle`  construct a simmilarity graph of the patterns in `X`.
 """
 function create(w_type::DataType, neighborhood::VertexNeighborhood, oracle::Function,X)
-    local number_of_vertices = number_of_patterns(X)
-    local g                  = Graph(number_of_vertices; weight_type= w_type)
+   number_of_vertices = number_of_patterns(X)
+   g                  = Graph(number_of_vertices; weight_type= w_type)
     @Threads.threads  for j=1:number_of_vertices
-        local neigh   = neighbors(neighborhood,j,X)
-        local x_j     = get_element(X,j)
-        local x_neigh = get_element(X,neigh)
-        local weights = oracle(j,neigh,x_j,x_neigh)
+       neigh   = neighbors(neighborhood,j,X)
+       x_j     = get_element(X,j)
+       x_neigh = get_element(X,neigh)
+       weights = oracle(j,neigh,x_j,x_neigh)
         connect!(g, j,neigh,weights)
     end
     gc()
@@ -207,10 +207,10 @@ end
 ```julia
 local_scale(neighborhood::KNNNeighborhood, oracle::Function, X; k = 7)
 ```
-Computes the local scale of each pattern according to [Self-Tuning Spectral Clustering](https://papers.nips.cc/paper/2619-self-tuning-spectral-clustering.pdf).
+Computes thescale of each pattern according to [Self-Tuning Spectral Clustering](https://papers.nips.cc/paper/2619-self-tuning-spectral-clustering.pdf).
 Return a matrix containing for every pattern the local_scale.
 
-\"The selection of the local scale \$ \\sigma \$ can be done by studying the local statistics of the neighborhoods surrounding points \$ i \$ and \$ j \$ .i \"
+\"The selection of thescale \$ \\sigma \$ can be done by studying thestatistics of the neighborhoods surrounding points \$ i \$ and \$ j \$ .i \"
 Zelnik-Manor and Perona use \$ \\sigma_i = d(s_i, s_K) \$ where \$s_K\$ is the \$ K \$ neighbor of point \$ s_i \$ .
 They \"used a single value of \$K=7\$, which gave good results even for high-dimensional data \" .
 

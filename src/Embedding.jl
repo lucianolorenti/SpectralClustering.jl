@@ -4,6 +4,8 @@ export embedding,
        YuShiPopout,
        PartialGroupingConstraints
 
+using LightGraphs
+using LightGraphs.LinAlg
 abstract type AbstractEmbedding <: EigenvectorEmbedder
 end
 
@@ -30,33 +32,46 @@ U is a matrix that contains the `nev`  largest eigevectors of \$ L \$.
 type NgLaplacian <: AbstractEmbedding
     nev::Integer
 end
-"""
-```julia
-embedding(cfg::NgLaplacian, gr::Graph)
-```
-Performs the eigendecomposition of the matrix \$ L \$ derived from the graph `gr`. The matrix \$ L \$ is defined according to [`NgLaplacian`](@ref)
+
+
 
 """
-function embedding(cfg::NgLaplacian, gr::Graph)
-    (L, a) = ng_laplacian(gr)
-    a=nothing
-    return embedding(cfg,L)
+```julia
+embedding(cfg::NgLaplacian, W::CombinatorialAdjacency)
+```
+Performs the eigendecomposition of the laplacian matrix of the weight matrix \$ W \$ defined according to [`NgLaplacian`](@ref)
+"""
+function embedding(cfg::NgLaplacian, W::CombinatorialAdjacency)
+    return embedding(cfg, NormalizedAdjacency(W))
 end
+
 """
 ```julia
-embedding(cfg::NgLaplacian, L::Union{Matrix,SparseMatrixCSC})
+embedding(cfg::NgLaplacian, L::NormalizedAdjacency)
 ```
-Performs the eigendecomposition of the matrix \$ L \$ defined according to [`NgLaplacian`](@ref)
+Performs the eigendecomposition of the laplacian matrix of the weight matrix \$ W \$ defined according to [`NgLaplacian`](@ref)
 """
-function embedding(cfg::NgLaplacian, L::Union{Matrix,SparseMatrixCSC})
-    (vals,vec) = eigs(L,nev  = cfg.nev, which = :LM, maxiter=1000)
+embedding(cfg::NgLaplacian, L::NormalizedAdjacency) = embedding(cfg, sparse(L))
+
+"""
+```julia
+embedding(cfg::NgLaplacian, L::SparseMatrixCSC)
+```
+Performs the eigendecomposition of the laplacian matrix of the weight matrix \$ W \$ defined according to [`NgLaplacian`](@ref)
+"""
+function embedding(cfg::NgLaplacian, L::AbstractMatrix)
+    (vals,vec) = eigs(L ,nev  = cfg.nev+15, which = :LM, maxiter=1000)
     vec        = real(vec)
+    idxs = find(real(vals).<0.999999)
+    idxs = idxs[1:min(length(idxs),cfg.nev)]
+    vec  = vec[:,idxs]
     if cfg.nev == 1
       return vec
     else
       return vec./ mapslices(norm,vec,2)
     end
-end
+end    
+
 doc"""
 The normalized laplacian as defined in  \$ D^{-\\frac{1}{2}} (D-W) D^{-\\frac{1}{2}} \$.
 
@@ -101,8 +116,8 @@ Partial grouping constraint structure. This sturct is passed to eigs to
 performe the L*x computation according to (41), (42) and (43) of
 ""Segmentation Given Partial Grouping Constraints""
 """
-struct PGCMatrix{T,I,F} <: AbstractMatrix{T}
-    W::SparseMatrixCSC{T, I}
+struct PGCMatrix{T,F} <: AbstractMatrix{T}
+    W::NormalizedAdjacency{T}
     At::Matrix{F}
 end
 import Base.size
@@ -116,18 +131,18 @@ function issymmetric(a::PGCMatrix)
     return true
 end
 function A_mul_B!(dest::AbstractVector, a::PGCMatrix, x::AbstractVector)
-    local z = x - a.At'*(a.At*x)
-    local y = a.W*z
+   z = x - a.At'*(a.At*x)
+   y = a.W*z
     dest[:]= y - a.At'*(a.At*y)
 end
 
 function restriction_matrix(nv::Integer,  restrictions::Vector{Vector{Integer}})
 
-    local number_of_restrictions = length(restrictions)
-    local U = spzeros(nv,nv)
-    local k = 0
+   number_of_restrictions = length(restrictions)
+   U = spzeros(nv,nv)
+   k = 0
     for j=1:number_of_restrictions
-        local U_t = restrictions[j]
+       U_t = restrictions[j]
         for s=1:length(U_t)-1
             k             = k+1
             U[U_t[s],k]   = 1
@@ -137,16 +152,16 @@ function restriction_matrix(nv::Integer,  restrictions::Vector{Vector{Integer}})
     return U
 end
 
-function embedding(cfg::PartialGroupingConstraints, L::SparseMatrixCSC,Dsqrtinv::SparseMatrixCSC, restrictions::Vector{Vector{Integer}})
-    U                 = restriction_matrix(size(L,1), restrictions)
-    (svd, n)          = svds(Dsqrtinv*U, nsv = length(restrictions))
+function embedding(cfg::PartialGroupingConstraints, L::NormalizedAdjacency, restrictions::Vector{Vector{Integer}})
+   U           = restriction_matrix(size(L,1), restrictions)
+    (svd, n)          = svds(spdiagm(prescalefactor(L))*U, nsv = length(restrictions))
     (eigvals, eigvec) = eigs(PGCMatrix(L,svd.Vt),nev = cfg.nev, maxiter = 50000, which = :LM)
     eigvec            = real(eigvec)
-    return Dsqrtinv*eigvec
+    return spdiagm(prescalefactor(L))*eigvec
 end
 function embedding(cfg::PartialGroupingConstraints, gr::Graph, restrictions::Vector{Vector{Integer}})
-    (L, dinv)  = ng_laplacian(gr)
-    return embedding(cfg, L, dinv, restrictions)
+   L  = NormalizedAdjacency(CombinatorialAdjacency(adjacency_matrix(gr)))
+    return embedding(cfg, L, restrictions)
 end
 
 """
@@ -176,15 +191,11 @@ function embedding(cfg::YuShiPopout,  grA::Graph, grR::Graph)
 - Understanding Popout through Repulsion. Stella X. Yu and Jianbo Shi
 """
 function embedding(cfg::YuShiPopout, grA::Graph, grR::Graph, restrictions::Vector{Vector{Integer}})
-    U                 = restriction_matrix(number_of_vertices(grA), restrictions)
-    (Wa,da)           = weight_matrix(Float32,grA)
-    (Wr,dr)           = weight_matrix(Float32,grR)
-    local da          = vec(sum(Wa,1))
-    local dr          = vec(sum(Wr,1))
-    local W           = Wa-Wr + spdiagm(dr)
-    local Dsqrtinv    = spdiagm(1./sqrt.(da+dr))
-    W                 = Dsqrtinv*W*Dsqrtinv
-    return embedding(PartialGroupingConstraints(cfg.nev), W, Dsqrtinv, restrictions)
+   Wa          = adjacency_matrix(grA)
+   Wr          = adjacency_matrix(grR)
+   dr          = vec(sum(Wr,1))
+   W           = Wa-Wr + spdiagm(dr)
+    return embedding(PartialGroupingConstraints(cfg.nev), NormalizedAdjacency(CombinatorialAdjacency(W)), restrictions)
 end
 
 """
@@ -197,49 +208,74 @@ function embedding(cfg::YuShiPopout,  grA::Graph, grR::Graph)
 - Understanding Popout through Repulsion. Stella X. Yu and Jianbo Shi
 """
 function embedding(cfg::YuShiPopout, grA::Graph, grR::Graph)
-    local Wa       = nothing
-    local Wr       = nothing
-    (Wa,da)        = weight_matrix(Float32,grA)
-    (Wr,dr)        = weight_matrix(Float32,grR)
-    local Weq      = Wa-Wr + spdiagm(dr)
-    local Deq      = spdiagm(da+dr)
+   Wa       = adjacency_matrix(grA)
+   Wr       = adjacency_matrix(grR)
+   dr       = vec(sum(Wr,1))
+   da       = vec(sum(Wa,1))
+   Weq      = Wa-Wr + spdiagm(dr)
+   Deq      = spdiagm(da+dr)
     Wa             = nothing
     da             = nothing
     Wr             = nothing
     dr             = nothing
-    (eigvals, vec) = eigs(Weq, Deq, nev = cfg.nev, tol=0.000001, maxiter = 10000, which = :LM)
+    (eigvals, eigvec) = eigs(Weq, Deq, nev = cfg.nev, tol=0.000001, maxiter = 10000, which = :LM)
     indexes        = sortperm(real(eigvals))
-    vec            = real(vec[:,indexes])
-    return vec./ mapslices(norm,vec,2)
+    eigvec            = real(eigvec[:,indexes])
+    return eigvec./ mapslices(norm,eigvec,2)
 end
+
+
+
 """
 ```julia
-embedding(cfg::ShiMalikLaplacian, gr::Union{Graph,SparseMatrixCSC})
+embedding(cfg::NgLaplacian, W::CombinatorialAdjacency)
+```
+Performs the eigendecomposition of the laplacian matrix of the weight matrix \$ W \$ defined according to [`NgLaplacian`](@ref)
+"""
+function embedding(cfg::ShiMalikLaplacian, W::CombinatorialAdjacency)
+    return embedding(cfg, NormalizedLaplacian(NormalizedAdjacency(W)))
+end
+
+
+
+"""
+```julia
+embedding(cfg::ShiMalikLaplacian, L::NormalizedLaplacian)
 ```
 # Parameters
 -   `cfg::ShiMalikLaplacian`. An instance of a [`ShiMalikLaplacian`](@ref)  that specify the number of eigenvectors to obtain
 - `gr::Union{Graph,SparseMatrixCSC}`. The `Graph`(@ref Graph) or the weight matrix of wich is going to be computed the normalized laplacian matrix.
 
 Performs the eigendecomposition of the normalized laplacian matrix of
-the graph `gr` defined acoording to [`ShiMalikLaplacian`](@ref). Returns
+the laplacian matriz `L` defined acoording to [`ShiMalikLaplacian`](@ref). Returns
 the cfg.nev eigenvectors associated with the non-zero smallest
 eigenvalues.
 """
-function embedding(cfg::ShiMalikLaplacian, gr::Union{Graph,SparseMatrixCSC})
-    (L, Dinvhalf)  = normalized_laplacian(gr)
-    (vals,vec) = eigs(L,nev  = cfg.nev + 50, which = :SM, maxiter=1000)
+function embedding(cfg::ShiMalikLaplacian, L::NormalizedLaplacian)
+    (vals,V) = eigs(sparse(L), nev  = cfg.nev + 50, which = :SM, maxiter=1000)
     idxs = find(real(vals).>0.0000001)
     idxs = idxs[1:min(length(idxs),cfg.nev)]
-    vec=Dinvhalf*real(vec[:,idxs])
-    return vec./ mapslices(norm,vec,2)
+    V=spdiagm(L.A.A.D.^(1/2))*real(V[:,idxs])
+    return V./ mapslices(norm,V,2)
 end
+
 """
 ```
 embedding{T<:AbstractEmbedding}(cfg::T, neighborhood::VertexNeighborhood, oracle::Function, data)
 ```
-"""
-function embedding{T<:AbstractEmbedding}(cfg::T, neighborhood::VertexNeighborhood,  oracle::Function, data)
+""" 
+function embedding(cfg::T, neighborhood::VertexNeighborhood,  oracle::Function, data) where T<:AbstractEmbedding
     graph = create(cfg.graph_creator,data)
     return embedding(cfg,graph)
 end
 
+
+"""
+```julia
+embedding(cfg::T, gr::Graph) where T<:AbstractEmbedding
+```
+Performs the eigendecomposition of the laplacian matrix of the weight matrix \$ W \$ derived from the graph `gr` defined according to [`NgLaplacian`](@ref)
+"""
+function embedding(cfg::T, gr::Graph) where T<:AbstractEmbedding
+    return embedding(cfg, CombinatorialAdjacency(adjacency_matrix(gr, dir=:both)))
+end

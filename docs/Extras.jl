@@ -7,9 +7,9 @@ using TextAnalysis
 using Clustering
 url_regexp = r"http[^\s-]*"
 function health_tweets(;number_of_tweets=10000)
-    local file_path = joinpath(Pkg.dir("SpectralClustering"),"docs","data", "Health-News-Tweets.zip")
-    local zipFile = InfoZIP.open_zip(file_path);
-    local documents = []
+   file_path = joinpath(Pkg.dir("SpectralClustering"),"docs","data", "Health-News-Tweets.zip")
+   zipFile = InfoZIP.open_zip(file_path);
+   documents = []
     for (filename, data) in zipFile
         if (startswith(filename, "Health-Tweets/"))
             try 
@@ -17,7 +17,7 @@ function health_tweets(;number_of_tweets=10000)
             catch
             end
             for ln in split(data,'\n')
-                local b = split(ln,'|')
+               b = split(ln,'|')
                 if length(b)>3
                     b[3]=string(b[3:end]...)
                     deleteat!(b,4:length(b))
@@ -30,8 +30,8 @@ function health_tweets(;number_of_tweets=10000)
         end
     end
 
-    local tweets_indices = sample(1:length(documents),min(number_of_tweets,length(documents)),replace=false)
-    local corpus = Corpus(documents[tweets_indices])
+   tweets_indices = sample(1:length(documents),min(number_of_tweets,length(documents)),replace=false)
+   corpus = Corpus(documents[tweets_indices])
     prepare!(corpus,  strip_html_tags |  strip_corrupt_utf8  | strip_case | strip_articles | strip_prepositions | strip_pronouns |   strip_punctuation | strip_numbers | strip_non_letters | strip_stopwords     ,skip_words=Set{AbstractString}(["rt","com","nhs","via","cmp","day","amp","net","msn","health","ebola","rss","study","health", "cancer","care","risk","help","patients"]))
     remove_frequent_terms!(corpus,0.95)
     update_lexicon!(corpus)
@@ -40,21 +40,21 @@ function health_tweets(;number_of_tweets=10000)
     return corpus
 end
 function digit_features()
-    local path1= joinpath(Pkg.dir("SpectralClustering"),"docs","data", "mfeat-fac")
-    local path2= joinpath(Pkg.dir("SpectralClustering"),"docs","data", "mfeat-fou")
+   path1= joinpath(Pkg.dir("SpectralClustering"),"docs","data", "mfeat-fac")
+   path2= joinpath(Pkg.dir("SpectralClustering"),"docs","data", "mfeat-fou")
     return (readdlm(path1)', readdlm(path2)')
 
 end
 function walker()
     
-    local file_path = joinpath(Pkg.dir("SpectralClustering"),"docs","data", "tracks.Aug24.zip")
-    local a		= InfoZIP.open_zip(file_path)["tracks.24Aug.txt"];
-    local n		= length(a)
-    local st		= 1
-    local at_end	= false
-    local datos	= Dict{Integer,Any}()
-    local pos		= 1
-    local id		= 1
+   file_path = joinpath(Pkg.dir("SpectralClustering"),"docs","data", "tracks.Aug24.zip")
+   a		= InfoZIP.open_zip(file_path)["tracks.24Aug.txt"];
+   n		= length(a)
+   st		= 1
+   at_end	= false
+   datos	= Dict{Integer,Any}()
+   pos		= 1
+   id		= 1
     while !at_end
         pos	= search(a,"TRACK.R",pos)
         if length(pos)>0
@@ -76,7 +76,7 @@ function walker()
     return datos
 end
 function embedded_image(img_size, embedded_patterns)
-    local ep        = mapslices(map_to_01,embedded_patterns,1)
+   ep        = mapslices(map_to_01,embedded_patterns,1)
     img_clusterized = zeros(RGB, img_size)
     i = 1
     for I in CartesianRange(img_size)
@@ -93,10 +93,10 @@ end
 function tweets_output(algo_output, algo_names, docu_term_m)
     output      = Dict{String,Any}("name"=>"result", "children"=>[]);
     for j=1:length(algo_output) 
-        local d_algo_j   = Dict{String,Any}("name"=>algo_names[j],"children"=>[])
+       d_algo_j   = Dict{String,Any}("name"=>algo_names[j],"children"=>[])
         push!(output["children"],d_algo_j)
         for i in unique(assignments(algo_output[j]))
-            local d_cluster_i    = Dict{String,Any}("name"=>string("Cluster ",i), "children"=>[])
+           d_cluster_i    = Dict{String,Any}("name"=>string("Cluster ",i), "children"=>[])
             push!(d_algo_j["children"], d_cluster_i)
             tweet_indices = find(assignments(algo_output[j]).==i)
             mean_tweet    = vec(mean(docu_term_m.dtm[tweet_indices,:],1)) 
@@ -111,28 +111,28 @@ end
 https://course.ccs.neu.edu/cs6140sp15/7_locality_cluster/Assignment-6/NMI.pdf
 """
 function NMI(c1::Vector{T1}, gt::Vector{T2}) where T1 where T2
-    local N = length(gt)
+   N = length(gt)
 
-    local labels_gt = unique(gt)
-    local labels_cluster = unique(c1)
+   labels_gt = unique(gt)
+   labels_cluster = unique(c1)
     
-    local P_gt = [sum(gt.==j)/N for j in labels_gt] 
-    local E_gt = sum(-P_gt.*log.(P_gt+eps()))
+   P_gt = [sum(gt.==j)/N for j in labels_gt] 
+   E_gt = sum(-P_gt.*log.(P_gt+eps()))
 
-    local P_cluster = [sum(c1.==j)/N for j in labels_cluster]
-    local E_cluster =sum(-P_cluster.*log.(P_cluster+eps()))
+   P_cluster = [sum(c1.==j)/N for j in labels_cluster]
+   E_cluster =sum(-P_cluster.*log.(P_cluster+eps()))
 
-    local conditional_entropy = 0
+   conditional_entropy = 0
 
     for i=1:length(labels_cluster)
-        local c = labels_cluster[i]
-        local indices_of_c = find(c1.==c)
-        local N_c = length(indices_of_c)
-        local P_given_c = [ sum(gt[indices_of_c].==l)/N_c for l in labels_gt]
-        local E_given_c = -P_cluster[i]*sum(P_given_c.*log.(P_given_c+eps()))
+       c = labels_cluster[i]
+       indices_of_c = find(c1.==c)
+       N_c = length(indices_of_c)
+       P_given_c = [ sum(gt[indices_of_c].==l)/N_c for l in labels_gt]
+       E_given_c = -P_cluster[i]*sum(P_given_c.*log.(P_given_c+eps()))
         conditional_entropy = conditional_entropy + E_given_c
     end
-    local MI =  E_gt - conditional_entropy
+   MI =  E_gt - conditional_entropy
     return (2*MI)/(E_gt + E_cluster)
     
 end    
