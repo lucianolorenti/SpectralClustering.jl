@@ -9,7 +9,7 @@ using Clustering
 
 import Clustering.assignments
 import Clustering.ClusteringResult
-type EigenvectorClusteringResult{T<:Integer} <: ClusteringResult
+struct EigenvectorClusteringResult{T<:Integer} <: ClusteringResult
     assignments::Vector{T}
 end
 function assignments(r::EigenvectorClusteringResult)
@@ -47,12 +47,12 @@ function YuEigenvectorRotation()
     return YuEigenvectorRotation(500)
 end
 function clusterize(cfg::YuEigenvectorRotation,V::Matrix)
-    (N,k)              = size(V)
-    V                  = spdiagm(1./sqrt.(vec(mapslices(norm,V,2))))*V
-   hasConverged = false
-   R            = zeros(k,k)
-    R[:,1]             = [ V[rand(1:N),i] for i = 1:k ]
-   c            = zeros(N)
+    (N,k) = size(V)
+    V = spdiagm(1 ./ sqrt.(vec(mapslices(norm,V,2))))*V
+    hasConverged = false
+    R = zeros(k,k)
+    R[:,1] = [ V[rand(1:N),i] for i = 1:k ]
+    c = zeros(N)
     for j=2:k
         c = c+abs.(V*R[:,j-1])
         R[:, j] = V[findmin(c)[2], :]'

@@ -130,7 +130,7 @@ function insert!(v::Vertex,e::Edge)
     end
 end
 
-function set_previous(v::Vertex,e::Edge,prev::Union{Void,Edge})
+function set_previous(v::Vertex,e::Edge,prev::Union{Nothing,Edge})
     if (e.v1 == v)
         e.prev_v1=prev
     else
@@ -138,14 +138,14 @@ function set_previous(v::Vertex,e::Edge,prev::Union{Void,Edge})
     end
 end
 
-function set_next(v::Vertex,e::Edge,next::Union{Void,Edge})
+function set_next(v::Vertex,e::Edge,next::Union{Nothing,Edge})
     if (e.v1 == v)
         e.next_v1=next
     else
         e.next_v2=next
     end
 end
-function linked_list_connect(v::Vertex,e::Edge,next::Union{Void,Edge})
+function linked_list_connect(v::Vertex,e::Edge,next::Union{Nothing,Edge})
     set_next(v,e,next)
     if (next != nothing)
         set_previous(v,next,e)
@@ -514,7 +514,7 @@ end
 
 include("Creation.jl")
 include("Matrices.jl")
-include("Plot.jl")
+#include("Plot.jl")
 
 #=Example
 g = Graph(11)
