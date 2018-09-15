@@ -104,7 +104,7 @@ function spatial_position(img::Matrix, i::Int)
   return   ind2sub(size(img),i)
 end
 
-function spatial_position{M<:Integer}(img::Matrix, i::Vector{M})
+function spatial_position(img::Matrix, i::Vector{M}) where M<:Integer
   return   ind2sub(size(img),i)
 end
 

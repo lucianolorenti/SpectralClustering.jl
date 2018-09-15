@@ -27,13 +27,13 @@ function weight_matrix(g::Graph)
 end
 """
 ```julia
-weight_matrix{T<:AbstractFloat}(n_type::T,g::Graph)
+weight_matrix(n_type::T,g::Graph) where T<:AbstractFloat
 ````
 
 Given a graph ´g´ returns the weight matrix of ``n_type` and a vector
 with the vertices degrees.
 """
-function weight_matrix{T<:AbstractFloat}(n_type::Type{T},g::Graph)
+function weight_matrix(n_type::Type{T},g::Graph) where T<AbstractFloat
     d=zeros(n_type,number_of_vertices(g))
     if (g.is_dirty)
       reindex!(g);
