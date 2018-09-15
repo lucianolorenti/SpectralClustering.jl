@@ -22,11 +22,11 @@ type Edge
 ```
 
 """
-type Edge{T}
-    next_v1::Union{Void,Edge{T}}
-  prev_v1::Union{Void,Edge{T}}
-  next_v2::Union{Void,Edge{T}}
-  prev_v2::Union{Void,Edge{T}}
+struct Edge{T}
+  next_v1::Union{Nothing,Edge{T}}
+  prev_v1::Union{Nothing,Edge{T}}
+  next_v2::Union{Nothing,Edge{T}}
+  prev_v2::Union{Nothing,Edge{T}}
   v1
   v2
   weight::T
@@ -34,10 +34,10 @@ end
 function weight_type(edge::Edge{T}) where T
     return T
 end
-type Vertex{T, EdgeType}
+struct Vertex{T, EdgeType}
    id::Integer
    data::T
-   edges::Union{Void,Edge{EdgeType}}
+   edges::Union{Nothing,Edge{EdgeType}}
    number_of_edges::Integer
    degree::Float64
    connections::Set{Integer}
@@ -52,13 +52,13 @@ end
 function Edge(v1::Vertex,v2::Vertex,w::Number)
     return Edge{weight_type(v1)}(nothing,nothing,nothing,nothing,v1,v2,convert(weight_type(v1),w))
 end
-type Graph
+struct Graph
   vertices::Vector{Vertex}
 
   is_dirty::Bool
 end
-type EdgeIterator
-   e::Union{Void,Edge}
+struct EdgeIterator
+   e::Union{Nothing,Edge}
    i::Integer
 end
 function empty!(g::Graph)
@@ -116,7 +116,7 @@ function insert!(v::Vertex,e::Edge)
     end
 end
 
-function set_previous(v::Vertex,e::Edge,prev::Union{Void,Edge})
+function set_previous(v::Vertex,e::Edge,prev::Union{Nothing,Edge})
   if (e.v1 == v)
     e.prev_v1=prev
   else
@@ -124,14 +124,14 @@ function set_previous(v::Vertex,e::Edge,prev::Union{Void,Edge})
   end
 end
 
-function set_next(v::Vertex,e::Edge,next::Union{Void,Edge})
+function set_next(v::Vertex,e::Edge,next::Union{Nothing,Edge})
   if (e.v1 == v)
     e.next_v1=next
   else
     e.next_v2=next
   end
 end
-function linked_list_connect(v::Vertex,e::Edge,next::Union{Void,Edge})
+function linked_list_connect(v::Vertex,e::Edge,next::Union{Nothing,Edge})
   set_next(v,e,next)
   if (next != nothing)
      set_previous(v,next,e)
@@ -430,11 +430,11 @@ function random_graph(iterations::Integer; probs=[0.4,0.4,0.2], weight=()->5, de
   end
   return g
 end
-type TargetVertexAndWeight
+struct TargetVertexAndWeight
     vertex_id::Integer
     edge_weight::Float64
 end
-immutable Triangle
+struct Triangle
     edge_1::TargetVertexAndWeight
     edge_2::TargetVertexAndWeight
 end

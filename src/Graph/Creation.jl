@@ -13,7 +13,7 @@ export VertexNeighborhood,
 import SpectralClustering: spatial_position
 """
 ```julia
-type RandomKGraph
+struct RandomKGraph
 ```
 The type RandomKGraph defines the parameters needed to create a random k-graph.
 Every vertex it is connected to `k` random neigbors.
@@ -21,7 +21,7 @@ Every vertex it is connected to `k` random neigbors.
 - `number_of_vertices::Integer`. Defines the number of vertices of the graph.
 - `k::Integer`. Defines the minimum number of  neighborhood of every vertex.
 """
-type RandomKGraph
+struct RandomKGraph
     number_of_vertices::Integer
     k::Integer
 end
@@ -61,7 +61,7 @@ which returns the neighbors list of the vertex j for the given data.
 abstract type VertexNeighborhood end
 """
 ```julia
-type PixelNeighborhood  <: VertexNeighborhood
+struct PixelNeighborhood  <: VertexNeighborhood
 ```
 `PixelNeighborhood` defines neighborhood for a given pixel based in its spatial location. Given a pixel located at (x,y), returns every pixel inside
 \$(x+e,y), (x-e,y)\$ and \$(x,y+e)(x,y-e)\$.
@@ -70,7 +70,7 @@ type PixelNeighborhood  <: VertexNeighborhood
 - e:: Integer. Defines the radius of the neighborhood.
 
 """
-type PixelNeighborhood  <: VertexNeighborhood
+struct PixelNeighborhood  <: VertexNeighborhood
     e::Integer
 end
 """
@@ -89,12 +89,12 @@ end
 
 """
 ```julia
-type CliqueNeighborhood <: VertexNeighborhood
+struct CliqueNeighborhood <: VertexNeighborhood
 ```
 `CliqueNeighborhood` specifies that the neighborhood for a given vertex \$j\$ in a
 graph of \$n\$ vertices are the remaining n-1 vertices.
 """
-type CliqueNeighborhood <: VertexNeighborhood
+struct CliqueNeighborhood <: VertexNeighborhood
 end
 """
 ```julia
@@ -107,7 +107,7 @@ function neighbors(config::CliqueNeighborhood,j::Integer,X)
 end
 """
 ```julia
-type KNNNeighborhood <: VertexNeighborhood
+struct KNNNeighborhood <: VertexNeighborhood
     k::Integer
     tree::KDTree
 end
@@ -118,7 +118,7 @@ end
 - `tree::KDTree`. Internal data structure.
 - `f::Function`. Transformation function
 """
-type KNNNeighborhood <: VertexNeighborhood
+struct KNNNeighborhood <: VertexNeighborhood
   k::Integer
   tree::KDTree
   t::Function    
@@ -141,13 +141,13 @@ function neighbors(config::KNNNeighborhood,j::Integer,X)
 end
 """
 ```@julia
-type RandomNeighborhood <: VertexNeighborhood
+struct RandomNeighborhood <: VertexNeighborhood
     k::Integer
 end
 ```
 For a given index `j`return `k` random vertices different from `j`
 """
-type RandomNeighborhood <: VertexNeighborhood
+struct RandomNeighborhood <: VertexNeighborhood
     k::Integer
 end
 function neighbors(config::RandomNeighborhood, j::Integer, X)
