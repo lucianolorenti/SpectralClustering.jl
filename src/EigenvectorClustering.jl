@@ -49,17 +49,17 @@ end
 function clusterize(cfg::YuEigenvectorRotation,V::Matrix)
     (N,k)              = size(V)
     V                  = spdiagm(1./sqrt.(vec(mapslices(norm,V,2))))*V
-    local hasConverged = false
-    local R            = zeros(k,k)
+   hasConverged = false
+   R            = zeros(k,k)
     R[:,1]             = [ V[rand(1:N),i] for i = 1:k ]
-    local c            = zeros(N)
+   c            = zeros(N)
     for j=2:k
         c = c+abs.(V*R[:,j-1])
         R[:, j] = V[findmin(c)[2], :]'
     end
-    local lastObjectiveValue = Inf
-    local nIter              = 0
-    local ncut_value         = 0
+   lastObjectiveValue = Inf
+   nIter              = 0
+   ncut_value         = 0
     while !hasConverged
         nIter            = nIter+ 1
         t_discrete       = V*R
@@ -89,6 +89,6 @@ by `C<:EigenvectorClusterize`.
 
 """
 function clusterize(cfg::T, clus::C, X) where T<:EigenvectorEmbedder where C<:EigenvectorClusterizer
-  local E = embedding(cfg,X)
+ E = embedding(cfg,X)
   return clusterize(clus, E)
 end

@@ -22,8 +22,7 @@ makedocs(
         "Utility Modules" => Any[
                        "Data Access" => "man/data_access.md",
                        "Graph" => "man/graph.md",
-                       "Landmarks Selection" => "man/landmark_selection.md",
-                       "Graph Matrices" => "man/graphmatrices.md"
+                       "Landmarks Selection" => "man/landmark_selection.md"
         ],
    ],
   doctest = false
@@ -32,7 +31,7 @@ makedocs(
 notebook_output_dir =   joinpath(dirname(@__FILE__), "build","notebooks")
 using IJulia
 for file in readdir(joinpath(dirname(@__FILE__), "notebooks"))
-    local full_path = joinpath(dirname(@__FILE__), "notebooks", file)
+   full_path = joinpath(dirname(@__FILE__), "notebooks", file)
     if (endswith(file,".ipynb"))
 	run(`$(IJulia.jupyter) nbconvert --template=nbextensions --to html $full_path --output-dir=$notebook_output_dir`)
     else

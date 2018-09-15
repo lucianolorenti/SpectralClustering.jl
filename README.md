@@ -23,8 +23,9 @@ The library provides functions that allow:
   * [Spectral grouping using the nystrom method](https://people.eecs.berkeley.edu/~malik/papers/FBCM-nystrom.pdf)
      * [Nystrom sampling depends on the eigenspectrum shape of the data](https://openreview.net/pdf?id=HJZvjvJPf)
 * Multiple views
-  * TODO Feature Concatenation
-  * TODO Feature Product
+  * Kernel Addition
+  * Kernel Product
+  * Feature Concatenation (in the examples section)
   * [Co-regularized Multi-view Spectral Clustering](https://papers.nips.cc/paper/4360-co-regularized-multi-view-spectral-clustering.pdf)
 * Incremental
   * TODO [Incremental spectral clustering by efficiently updating the eigen-system](https://www.sciencedirect.com/science/article/pii/S0031320309002209/pdfft?md5=dc50ecba5ab9ab23ea239ef89244800a&pid=1-s2.0-S0031320309002209-main.pdf)

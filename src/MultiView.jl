@@ -1,6 +1,8 @@
 export embedding,
        View,
-        CoRegularizedMultiView
+    CoRegularizedMultiView,
+    KernelProduct,
+    KernelAddition
 
 """
 A view
@@ -38,21 +40,21 @@ embedding(cfg::CoRegularizedMultiView, X::Vector)
 
 An example that shows how to use this methods is provied in the Usage section of the manual
 """
-function embedding(cfg::CoRegularizedMultiView, X::Vector)
-    local U = Vector{Matrix}(length(cfg.views))
-    local Laplacians = [ ng_laplacian(X[i])[1] for i=1:length(cfg.views) ]
+function embedding(cfg::CoRegularizedMultiView, X::Vector; disagreement::Union{Void,Vector} = nothing)
+    U = Vector{Matrix}(length(cfg.views))
+    
+    Laplacians = [ sparse(NormalizedAdjacency(CombinatorialAdjacency(adjacency_matrix(X[i], dir=:both))))  for i=1:length(cfg.views) ]
     #Initialize all U(v),2≤v≤m$
     for i=2:length(cfg.views)
         U[i] =  embedding(cfg.views[i].embedder,Laplacians[i])
     end
-    local curr_objective = -Inf
-    local prev_objective = 0
-    local differences = []
-    local best_objective = Inf
-    local iterations_without_improvement = 0
+    curr_objective = -Inf
+    prev_objective = 0
+    best_objective = Inf
+    iterations_without_improvement = 0
     while (abs(curr_objective - prev_objective)  > cfg.threshold) && (iterations_without_improvement < 5)
         for i=1:length(cfg.views)
-            local L = Laplacians[i]
+           L = Laplacians[i]
             for j=1:length(cfg.views)
                 if (j!=i)
                     L = L + cfg.views[i].lambda*U[j]*U[j]'
@@ -67,11 +69,36 @@ function embedding(cfg::CoRegularizedMultiView, X::Vector)
             else
                 iterations_without_improvement=iterations_without_improvement+1
             end
-            push!(differences, curr_objective)
+            if (disagreement!=nothing)
+                push!( disagreement, curr_objective)
+            end
             
         end
     end
-    return (U[1], differences)
+    return U[1]
+end
+
+type KernelAddition <: EigenvectorEmbedder
+    embedder::EigenvectorEmbedder    
+end
+function embedding(cfg::KernelAddition, X::Vector)
+    W = adjacency_matrix(X[1])
+    for j=2:length(X)
+        W_1 = adjacency_matrix(X[j])
+        W = W + W_1
+    end
+    return  embedding(cfg.embedder, W)
+end
+type KernelProduct <: EigenvectorEmbedder
+    embedder::EigenvectorEmbedder
+end
+function embedding(cfg::KernelProduct, X::Vector)
+    W = adjacency_matrix(X[1])
+    for j=2:length(X)
+        W_1 = adjacency_matrix(X[j])
+        W = W .* W_1
+    end
+    return embedding(cfg.embedder, W)
 end
 
 """
