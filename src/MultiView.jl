@@ -8,7 +8,7 @@ export embedding,
 A view
 
 ```julia
-type View
+struct View
   ng_laplacian::NgLaplacian
   lambda::Float64
 end
@@ -18,7 +18,7 @@ the member graph is a function that returns and embedding from the data.
 The member lambda is a parameter that scale the eigenvectors
 The member nev is the number of eigenvectors requested to the embedding
 """
-type View
+struct View
     embedder::EigenvectorEmbedder    
     lambda::Float64
 end
@@ -29,7 +29,7 @@ end
 ### Abhishek Kumar, Piyush Rai, Hal Daumé
 
 """
-type CoRegularizedMultiView <: EigenvectorEmbedder
+struct CoRegularizedMultiView <: EigenvectorEmbedder
     threshold::Float64
     views::Vector{View}
 end
@@ -40,7 +40,7 @@ embedding(cfg::CoRegularizedMultiView, X::Vector)
 
 An example that shows how to use this methods is provied in the Usage section of the manual
 """
-function embedding(cfg::CoRegularizedMultiView, X::Vector; disagreement::Union{Void,Vector} = nothing)
+function embedding(cfg::CoRegularizedMultiView, X::Vector; disagreement::Union{Nothing,Vector} = nothing)
     U = Vector{Matrix}(length(cfg.views))
     
     Laplacians = [ sparse(NormalizedAdjacency(CombinatorialAdjacency(adjacency_matrix(X[i], dir=:both))))  for i=1:length(cfg.views) ]
@@ -78,7 +78,7 @@ function embedding(cfg::CoRegularizedMultiView, X::Vector; disagreement::Union{V
     return U[1]
 end
 
-type KernelAddition <: EigenvectorEmbedder
+struct KernelAddition <: EigenvectorEmbedder
     embedder::EigenvectorEmbedder    
 end
 function embedding(cfg::KernelAddition, X::Vector)
@@ -89,7 +89,7 @@ function embedding(cfg::KernelAddition, X::Vector)
     end
     return  embedding(cfg.embedder, W)
 end
-type KernelProduct <: EigenvectorEmbedder
+struct KernelProduct <: EigenvectorEmbedder
     embedder::EigenvectorEmbedder
 end
 function embedding(cfg::KernelProduct, X::Vector)
@@ -113,7 +113,7 @@ type LargeScaleMultiView
 - `k_nn::Integer`. k nearest neighbors.
 - 'gamma::Float64`.
 """
-type LargeScaleMultiView
+struct LargeScaleMultiView
 	k::Integer
 	n_salient_points::Integer
 	k_nn::Integer

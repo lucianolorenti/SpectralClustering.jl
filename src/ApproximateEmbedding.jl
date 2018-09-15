@@ -1,5 +1,6 @@
 using Clustering,
-   LightGraphs
+    LightGraphs,
+    SparseArrays
 export NystromMethod,
        LandmarkBasedRepresentation,
        DNCuts
@@ -8,7 +9,7 @@ Large Scale Spectral Clustering with Landmark-Based Representation
 Xinl ei Chen Deng Cai
 
 """
-type LandmarkBasedRepresentation{T<:AbstractLandmarkSelection}
+struct LandmarkBasedRepresentation{T<:AbstractLandmarkSelection}
   landmark_selector::T
   number_of_landmarks::Integer
   r::Integer #nearest landamrks
@@ -47,7 +48,7 @@ function clusterize(cfg::LandmarkBasedRepresentation,X)
   Z=sparse(I,J,Z,p,n)
   p=zeros(p)
   (s,A) = eigs(Z*Z',nev=3,maxiter=1000, v0= v0)
-  S=spdiagm(1./(sqrt(s)+eps()))
+  S=spdiagm(1 ./ (sqrt(s)+eps()))
   B=S*A'*Z
 
   for j=1:size(B,2)
@@ -78,18 +79,17 @@ points.
 - `nvec::Integer`. The number of eigenvector to obtain.
 - `threaded::Bool`. Default: True. Specifies whether the threaded version is used.
 """
-type NystromMethod{T<:AbstractLandmarkSelection} <: EigenvectorEmbedder
+struct NystromMethod{T<:AbstractLandmarkSelection} <: EigenvectorEmbedder
   landmarks_selector::T
   number_of_landmarks::Integer
   w::Function
   nvec::Integer
   threaded::Bool
 end
-function NystromMethod{T<:AbstractLandmarkSelection}(
-                                  landmarks_selector::T,
-                                  number_of_landmarks::Integer,
-                                  w::Function,
-                                  nvec::Integer)
+function NystromMethod(landmarks_selector::T,
+                       number_of_landmarks::Integer,
+                       w::Function,
+                       nvec::Integer) where T<:AbstractLandmarkSelection
     return NystromMethod(landmarks_selector,
                        number_of_landmarks,
                       w,
@@ -229,14 +229,14 @@ function compute_dhat(AA::Matrix{T}, BB::Matrix{T}) where T
     #d2        = sum(B,1) + sum(B',1)*pinv(A)*B
     dhat[n+1:end] =  sum(BB,1) + sum(BB,2)'*pinv(AA)*BB
     #dhat= sqrt(1./(hcat(d1,d2)+eps()))'
-    return 1./(sqrt.(dhat).+eps())
+    return 1 ./ (sqrt.(dhat).+eps())
 end
 function compute_V(AA::Matrix{T}, BB::Matrix{T}, nvec::Integer) where T<:Number
    n    = size(AA,1)
    m    = size(BB,2)
    Asi  = real(sqrtm(Symmetric(pinv(AA))))
    F    = svdfact(  AA+((Asi*(BB*BB'))*Asi) )
-   V_1  = (Asi*F[:U]).*vec((1./(sqrt.(F[:S])+eps())))'
+   V_1  = (Asi*F[:U]).*vec((1 ./ (sqrt.(F[:S])+eps())))'
    VA   = AA*V_1[:,1:nvec+1]
    VB   = BB'*V_1[:,1:nvec+1]
     return vcat(VA,VB)
@@ -280,7 +280,7 @@ type DNCuts
 # Multiscale Combinatorial Grouping for Image Segmentation and Object Proposal Generation
 ## Jordi Pont-Tuset, Pablo Arbeláez, Jonathan T. Barron, Member, Ferran Marques, Jitendra Malik
 """
-type DNCuts
+struct DNCuts
   scales::Integer
   nev::Integer
   img_size
@@ -309,13 +309,13 @@ m,n = size(A)
 A_normalized = sparse(ei,ej,ev./S[ej],m,n)
 http://stackoverflow.com/questions/24296856/in-julia-how-can-i-column-normalize-a-sparse-matrix
 =#
-function normalize_columns(A :: SparseMatrixCSC)
-          sums = sum(A,1)+ eps()
-          I,J,V = findnz(A)
-          for idx in 1:length(V)
-            V[idx] /= sums[J[idx]]
-          end
-          sparse(I,J,V)
+function normalize_columns(A::SparseMatrixCSC)
+    sums = sum(A,1)+ eps()
+    I,J,V = findnz(A)
+    for idx in 1:length(V)
+        V[idx] /= sums[J[idx]]
+    end
+    sparse(I,J,V)
 end
 """
 ```

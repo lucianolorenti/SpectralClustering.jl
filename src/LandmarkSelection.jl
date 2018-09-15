@@ -25,13 +25,13 @@ abstract type AbstractLandmarkSelection end
 
 """
 ```
-type RandomLandmarkSelection <: LandmarkSelection
+struct RandomLandmarkSelection <: LandmarkSelection
 ```
 `Random` random samples `n` data points from a dataset.
 
 """
 
-type RandomLandmarkSelection <: AbstractLandmarkSelection
+struct RandomLandmarkSelection <: AbstractLandmarkSelection
 end
 """
 ```julia
@@ -49,12 +49,12 @@ end
 
 """
 ```
-type EvenlySpacedLandmarkSelection <: AbstractLandmarkSelection
+struct EvenlySpacedLandmarkSelection <: AbstractLandmarkSelection
 ```
 The `EvenlySpacedLandmarkSelection` selection method selects  `n` evenly spaced points  from a dataset.
 
 """
-type EvenlySpacedLandmarkSelection  <: AbstractLandmarkSelection
+struct EvenlySpacedLandmarkSelection  <: AbstractLandmarkSelection
 end
 """
 ```
@@ -69,7 +69,7 @@ end
 
 """
 ```
-type MS3 <: AbstractLandmarkSelection
+struct MS3 <: AbstractLandmarkSelection
     proportion::Float64
     sim::Function
 end
@@ -78,7 +78,7 @@ The `MS3` selection method selects  `m`
 NYSTROM SAMPLING DEPENDS ON THE EIGENSPECTRUM SHAPE OF THE DATA
 """
 
-type MS3 <: AbstractLandmarkSelection
+struct MS3 <: AbstractLandmarkSelection
     proportion::Float64
     sim::Function
 end

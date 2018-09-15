@@ -9,27 +9,27 @@ using LightGraphs.LinAlg
 abstract type AbstractEmbedding <: EigenvectorEmbedder
 end
 
-doc"""
+"""
 ```julia
 type NgLaplacian <: AbstractEmbedding
 ```
 # Members
 - `nev::Integer`. The number of eigenvectors to obtain
 
-Given a affinity matrix \$ W \\in \\mathbb{R}^{n \\times n} \$.  Ng et al defines the laplacian as \$ L =  D^{-\\frac{1}{2}} W D^{-\\frac{1}{2}} \$ where \$ D \$ is a diagonal matrix whose (i,i)-element is the sum of W's i-th row.
+Given a affinity matrix `` W \\in \\mathbb{R}^{n \\times n} ``.  Ng et al defines the laplacian as `` L =  D^{-\\frac{1}{2}} W D^{-\\frac{1}{2}} `` where `` D `` is a diagonal matrix whose (i,i)-element is the sum of W's i-th row.
 
 The embedding function solves a relaxed version of the following optimization problem:
-$\begin{array}{crclcl}
-    \displaystyle \max_{ U \in \mathbb{R}^{n\times k} \hspace{10pt} } & \mathrm{Tr}(U^T L  U)  &\\
-   \textrm{s.a.}  {U^T U}  =   I &&
-\end{array}$
+``\\begin{array}{crclcl}
+    \\displaystyle \\max_{ U \\in \\mathbb{R}^{n\\times k} \\hspace{10pt} } & \\mathrm{Tr}(U^T L  U)  &\\\\
+   \\textrm{s.a.}  {U^T U}  =   I &&
+\\end{array}``
 
-U is a matrix that contains the `nev`  largest eigevectors of \$ L \$.
+U is a matrix that contains the `nev`  largest eigevectors of `` L ``.
 
 # References
 - [On Spectral Clustering: Analysis and an algorithm. Andrew Y. Ng, Michael I. Jordan, Yair Weiss](http://ai.stanford.edu/~ang/papers/nips01-spectral.pdf)
 """
-type NgLaplacian <: AbstractEmbedding
+struct NgLaplacian <: AbstractEmbedding
     nev::Integer
 end
 
@@ -39,7 +39,7 @@ end
 ```julia
 embedding(cfg::NgLaplacian, W::CombinatorialAdjacency)
 ```
-Performs the eigendecomposition of the laplacian matrix of the weight matrix \$ W \$ defined according to [`NgLaplacian`](@ref)
+Performs the eigendecomposition of the laplacian matrix of the weight matrix `` W `` defined according to [`NgLaplacian`](@ref)
 """
 function embedding(cfg::NgLaplacian, W::CombinatorialAdjacency)
     return embedding(cfg, NormalizedAdjacency(W))
@@ -49,7 +49,7 @@ end
 ```julia
 embedding(cfg::NgLaplacian, L::NormalizedAdjacency)
 ```
-Performs the eigendecomposition of the laplacian matrix of the weight matrix \$ W \$ defined according to [`NgLaplacian`](@ref)
+Performs the eigendecomposition of the laplacian matrix of the weight matrix `` W `` defined according to [`NgLaplacian`](@ref)
 """
 embedding(cfg::NgLaplacian, L::NormalizedAdjacency) = embedding(cfg, sparse(L))
 
@@ -57,7 +57,7 @@ embedding(cfg::NgLaplacian, L::NormalizedAdjacency) = embedding(cfg, sparse(L))
 ```julia
 embedding(cfg::NgLaplacian, L::SparseMatrixCSC)
 ```
-Performs the eigendecomposition of the laplacian matrix of the weight matrix \$ W \$ defined according to [`NgLaplacian`](@ref)
+Performs the eigendecomposition of the laplacian matrix of the weight matrix `` W `` defined according to [`NgLaplacian`](@ref)
 """
 function embedding(cfg::NgLaplacian, L::AbstractMatrix)
     (vals,vec) = eigs(L ,nev  = cfg.nev+15, which = :LM, maxiter=1000)
@@ -72,8 +72,8 @@ function embedding(cfg::NgLaplacian, L::AbstractMatrix)
     end
 end    
 
-doc"""
-The normalized laplacian as defined in  \$ D^{-\\frac{1}{2}} (D-W) D^{-\\frac{1}{2}} \$.
+"""
+The normalized laplacian as defined in  `` D^{-\\frac{1}{2}} (D-W) D^{-\\frac{1}{2}} ``.
 
 ## References:
 - Spectral Graph Theory. Fan Chung
@@ -87,7 +87,7 @@ type ShiMalikLaplacian <: AbstractEmbedding
 - `nev::Integer`. The number of eigenvector to obtain.
 
 """
-type ShiMalikLaplacian <: AbstractEmbedding
+struct ShiMalikLaplacian <: AbstractEmbedding
     nev::Integer
 end
 
@@ -230,7 +230,7 @@ end
 ```julia
 embedding(cfg::NgLaplacian, W::CombinatorialAdjacency)
 ```
-Performs the eigendecomposition of the laplacian matrix of the weight matrix \$ W \$ defined according to [`NgLaplacian`](@ref)
+Performs the eigendecomposition of the laplacian matrix of the weight matrix `` W `` defined according to [`NgLaplacian`](@ref)
 """
 function embedding(cfg::ShiMalikLaplacian, W::CombinatorialAdjacency)
     return embedding(cfg, NormalizedLaplacian(NormalizedAdjacency(W)))
@@ -274,7 +274,7 @@ end
 ```julia
 embedding(cfg::T, gr::Graph) where T<:AbstractEmbedding
 ```
-Performs the eigendecomposition of the laplacian matrix of the weight matrix \$ W \$ derived from the graph `gr` defined according to [`NgLaplacian`](@ref)
+Performs the eigendecomposition of the laplacian matrix of the weight matrix `` W `` derived from the graph `gr` defined according to [`NgLaplacian`](@ref)
 """
 function embedding(cfg::T, gr::Graph) where T<:AbstractEmbedding
     return embedding(cfg, CombinatorialAdjacency(adjacency_matrix(gr, dir=:both)))
