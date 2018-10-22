@@ -63,8 +63,11 @@ select_landmarks(c::EvenlySpacedLandmarkSelection,n::Integer, X)
 
 """
 function select_landmarks(c::EvenlySpacedLandmarkSelection, n::Integer, X)
-  m = number_of_patterns(X)
-  return collect(1:round(Integer,floor(m/n)):m)
+    m = number_of_patterns(X)
+    println(size(X))
+    println(typeof(X))
+    println(m)
+    return collect(1:round(Integer,floor(m/n)):m)
 end
 
 """
