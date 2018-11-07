@@ -1,7 +1,7 @@
 using Clustering,
     LightGraphs,
     SparseArrays,
-    LinearAlegbra
+    LinearAlgebra
 export NystromMethod,
        LandmarkBasedRepresentation,
        DNCuts
