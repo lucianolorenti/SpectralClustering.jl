@@ -127,15 +127,15 @@ function get_element(data::Array{T, 3}, i::Vector)  where T<:Number
 end
 
 get_element(data::Array{T, 3}, i::Integer)  where T<:Number = get_element(data, [i])
+get_element!(o::AbstractArray, data::Array{T,3}, i::Integer) where T<:Number = get_element!(o, data, [i])
 
 function get_element!(o::AbstractArray, data::Array{T,3}, i::Vector) where T<:Number
     (_, nr, nc) = size(data)
-    println(i)
     cart_indices = CartesianIndices((nr,nc))[i]
-    @inbounds o[3:end, :] .= getindex.((data,), :, cart_indices)
-    for (i, ci) in enumerate(cart_indices)
-        @inbounds o[1,i] = ci[2]
-        @inbounds o[2,i] = ci[1]
+    @inbounds for (i, pos) in enumerate(cart_indices)
+        o[3:end, i] = data[:, pos[1], pos[2]]
+        o[1,i] = pos[2]
+        o[2,i] = pos[1]
     end
 end
 
