@@ -1,6 +1,7 @@
 using Clustering,
     LightGraphs,
-    SparseArrays
+    SparseArrays,
+    LinearAlegbra
 export NystromMethod,
        LandmarkBasedRepresentation,
        DNCuts
@@ -225,9 +226,9 @@ function compute_dhat(AA::Matrix{T}, BB::Matrix{T}) where T
    m    = size(BB,2)
    dhat = zeros(T,n+m)
     #d1        = sum(vcat(A,B'),1)
-    dhat[1:n]  = sum(AA,1) + sum(BB,2)'
+    dhat[1:n] = sum(AA, dims=1) + sum(BB, dims=2)'
     #d2        = sum(B,1) + sum(B',1)*pinv(A)*B
-    dhat[n+1:end] =  sum(BB,1) + sum(BB,2)'*pinv(AA)*BB
+    dhat[n+1:end] =  sum(BB, dims=1) + sum(BB, dims=2)'*pinv(AA)*BB
     #dhat= sqrt(1./(hcat(d1,d2)+eps()))'
     return 1 ./ (sqrt.(dhat).+eps())
 end
