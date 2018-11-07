@@ -243,15 +243,15 @@ function compute_V(AA::Matrix{T}, BB::Matrix{T}, nvec::Integer) where T<:Number
     return vcat(VA,VB)
 end
 function normalize_A_and_B!(AA::Matrix, BB::Matrix)
-   n    = size(AA,1)
-   m    = size(BB,2)
-   dhat = compute_dhat(AA,BB)
-   vv   = view(dhat,1:n)
-   vb   = view(dhat,n+(1:m))
-    for I in CartesianRange(size(AA))
-        @inbounds AA[I] *=vv[I[1]]*vv[I[2]]
+    n    = size(AA,1)
+    m    = size(BB,2)
+    dhat = compute_dhat(AA,BB)
+    vv   = view(dhat,1:n)
+    vb   = view(dhat,n .+ (1:m))
+    for I in CartesianIndices(size(AA))
+        @inbounds AA[I] *= vv[I[1]]*vv[I[2]]
     end
-    for I in CartesianRange(size(BB))
+    for I in CartesianIndices(size(BB))
         @inbounds BB[I] *= vv[I[1]]*vb[I[2]]
     end
 end
