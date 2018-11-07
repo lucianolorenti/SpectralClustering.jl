@@ -4,5 +4,3 @@ NearestNeighbors
 Clustering
 StatsBase
 LightGraphs
-SpectralClustering
-LinearAlgebra
