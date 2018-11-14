@@ -233,13 +233,13 @@ function compute_dhat(AA::Matrix{T}, BB::Matrix{T}) where T
     return 1 ./ (sqrt.(dhat).+eps())
 end
 function compute_V(AA::Matrix{T}, BB::Matrix{T}, nvec::Integer) where T<:Number
-   n    = size(AA,1)
-   m    = size(BB,2)
-   Asi  = real(sqrtm(Symmetric(pinv(AA))))
-   F    = svdfact(  AA+((Asi*(BB*BB'))*Asi) )
-   V_1  = (Asi*F[:U]).*vec((1 ./ (sqrt.(F[:S])+eps())))'
-   VA   = AA*V_1[:,1:nvec+1]
-   VB   = BB'*V_1[:,1:nvec+1]
+    n = size(AA,1)
+    m = size(BB,2)
+    Asi = real(sqrt(Symmetric(pinv(AA))))
+    F = svd(AA+((Asi*(BB*BB'))*Asi) )
+    V_1 = (Asi*F.U).*vec((1 ./ (sqrt.(F.S) .+ eps())))'
+    VA = AA*V_1[:,1:nvec+1]
+    VB = BB'*V_1[:,1:nvec+1]
     return vcat(VA,VB)
 end
 function normalize_A_and_B!(AA::Matrix, BB::Matrix)

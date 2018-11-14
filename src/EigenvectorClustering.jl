@@ -32,7 +32,7 @@ function KMeansClusterizer(k::Integer)
     return KMeansClusterizer(k, :kmpp)
 end
 function clusterize(t::KMeansClusterizer, E)
-    model = kmeans(E', t.k, init =t.init)
+    model = kmeans(Matrix(E'), t.k, init =t.init)
 
     return EigenvectorClusteringResult(assignments(model))
 end
