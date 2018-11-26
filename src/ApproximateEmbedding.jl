@@ -21,11 +21,11 @@ clusterize(cfg::LandmarkBasedRepresentation,X)
 
 """
 function clusterize(cfg::LandmarkBasedRepresentation,X)
-  n         = number_of_patterns(X)
-  p         = number_of_landmarks(cfg.landmarks, X)
+  n = number_of_patterns(X)
+  p = number_of_landmarks(cfg.landmarks, X)
   landmarks = select_landmarks(cfg.landmarks,X)
-  tree      = RTree(length(get_element(X,1)[1:2]))
-  for i = 1:length(landmarks)
+  tree = RTree(length(get_element(X,1)[1:2]))
+  for i= 1:length(landmarks)
     vec_i  = get_element(X,landmarks[i])
     add_point!(tree,i,vec_i[1:2])
   end
@@ -92,10 +92,10 @@ function NystromMethod(landmarks_selector::T,
                        w::Function,
                        nvec::Integer) where T<:AbstractLandmarkSelection
     return NystromMethod(landmarks_selector,
-                       number_of_landmarks,
-                      w,
-                     nvec,
-                    true)
+                         number_of_landmarks,
+                         w,
+                         nvec,
+                         true)
 end
 
 """
@@ -183,9 +183,9 @@ Returns the two submatrices and the sampled points used to calcluate it
 function create_A_B(cfg::NystromMethod, X)
   landmarks = select_landmarks(cfg.landmarks_selector, cfg.number_of_landmarks, X)
   if (cfg.threaded)
-      (A,B)     = create_A_B(cfg::NystromMethod,landmarks, X)
+      (A,B) = create_A_B(cfg::NystromMethod,landmarks, X)
   else
-      (A,B)     = create_A_B_single_thread(cfg::NystromMethod,landmarks, X)
+      (A,B) = create_A_B_single_thread(cfg::NystromMethod,landmarks, X)
   end
   return (A,B,landmarks)
 end
@@ -195,9 +195,11 @@ embedding(cfg::NystromMethod, X)
 This is an overloaded function
 """
 function embedding(cfg::NystromMethod, X)
-  n         = number_of_patterns(X)
-  landmarks = select_landmarks(cfg.landmarks_selector,cfg.number_of_landmarks,X)
-  return embedding(cfg,landmarks,X)
+    n = number_of_patterns(X)
+    landmarks = select_landmarks(cfg.landmarks_selector,
+                                 cfg.number_of_landmarks,
+                                 X)
+    return embedding(cfg,landmarks,X)
 end
 """
 embedding(cfg::NystromMethod, landmarks::Vector{Int}, X)
@@ -211,10 +213,8 @@ embedding(cfg::NystromMethod, landmarks::Vector{Int}, X)
 Performs the eigenvector embedding according to
 """
 function embedding(cfg::NystromMethod, landmarks::Vector{<:Integer}, X)
-   A = nothing
-   B = nothing
     if (cfg.threaded)
-        (A,B)     = create_A_B(cfg,landmarks,X)
+        (A,B) = create_A_B(cfg,landmarks,X)
     else
         (A,B) = create_A_B_single_thread(cfg, landmarks, X)
     end
@@ -237,7 +237,7 @@ function compute_V(AA::Matrix{T}, BB::Matrix{T}, nvec::Integer) where T<:Number
     m = size(BB,2)
     Asi = real(sqrt(Symmetric(pinv(AA))))
     F = svd(AA+((Asi*(BB*BB'))*Asi) )
-    V_1 = (Asi*F.U).*vec((1 ./ (sqrt.(F.S) .+ eps())))'
+    V_1 = (Asi*F.U).*vec( (1 ./ (sqrt.(F.S).+ eps())))'
     VA = AA*V_1[:,1:nvec+1]
     VB = BB'*V_1[:,1:nvec+1]
     return vcat(VA,VB)
@@ -261,13 +261,12 @@ embedding(cfg::NystromMethod, A::Matrix, B::Matrix, landmarks::Vector{Int})
 Performs the eigenvector approximation given the two submatrices A and B.
 """
 function embedding(cfg::NystromMethod, AA::Matrix, BB::Matrix, landmarks::Vector{<:Integer})
-   n         = size(AA,1)
-   m         = size(BB,2)
+    n = size(AA,1)
+    m = size(BB,2)
     normalize_A_and_B!(AA,BB)
-   V = compute_V(AA,BB, cfg.nvec)
-   indexes_b = setdiff(collect(1:(n+m)), landmarks)
-   indexes   = sortperm(vcat(landmarks,indexes_b))
-
+    V = compute_V(AA,BB, cfg.nvec)
+    indexes_b = setdiff(collect(1:(n+m)), landmarks)
+    indexes   = sortperm(vcat(landmarks,indexes_b))
     for i = 2:cfg.nvec+1
         V[:,i] = V[:,i] ./V[:,1]
     end
