@@ -1,0 +1,11 @@
+name = "SpectralClustering"
+uuid = "a9453432-0461-11e9-1276-9b1ac3d3d0c6"
+authors = ["lucianolorenti <lucianolorenti@gmail.com>"]
+version = "0.1.0"
+
+[deps]
+Clustering = "aaaa29a8-35af-508c-8bc3-b662a17a0fe5"
+ColorTypes = "3da002f7-5984-5a60-b8a6-cbb66c0b333f"
+LightGraphs = "093fc24a-ae57-5d10-9952-331d41423f4d"
+NearestNeighbors = "b8a86587-4115-5ab1-83bc-aa920d37bbce"
+StatsBase = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
