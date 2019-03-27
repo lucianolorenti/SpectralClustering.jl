@@ -5,6 +5,9 @@ export AbstractLandmarkSelection,
       select_landmarks,
       MS3
 using StatsBase
+using Clustering
+using Distances
+
 """
 ```julia
 abstract type AbstractLandmarkSelection end
@@ -103,4 +106,14 @@ function select_landmarks(c::MS3, m::Integer, X)
         push!(points, min_point)
     end
     return points    
+end
+
+struct KMeansLandmarkSelection <: AbstractLandmarkSelection
+   
+end
+select_landmarks(c::KMeansLandmarkSelection, m::Integer, X::Vector{Vector}) = select_landmarks(c, m, vcat(X...))
+function select_landmarks(c::KMeansLandmarkSelection, m::Integer, X::Matirx)
+    result = kmeans(X, m)
+    point_distances  = vec(minimum(pairwise(Euclidean(), X, b.centers), dims=2))
+    return sortperm(point_distances)[1:m]
 end
