@@ -26,7 +26,7 @@ type Edge
 ```
 
 """
-struct Edge{T}
+mutable struct Edge{T}
   next_v1::Union{Nothing,Edge{T}}
   prev_v1::Union{Nothing,Edge{T}}
   next_v2::Union{Nothing,Edge{T}}
@@ -38,7 +38,7 @@ end
 function weight_type(edge::Edge{T}) where T
     return T
 end
-struct Vertex{T, EdgeType}
+mutable struct Vertex{T, EdgeType}
    id::Integer
    data::T
    edges::Union{Nothing,Edge{EdgeType}}
@@ -78,7 +78,7 @@ Graph(n_vertices::Integer=0; vertex_type::DataType  = Any ,initial_value=nothing
 Construct an undirected weighted grpah of `n_vertices` vertices.
 """
 function Graph(n_vertices::Integer=0; vertex_type::DataType  = Any ,initial_value=nothing, weight_type::DataType = Float64)
-   vertices = Vector{Vertex{vertex_type, weight_type}}(n_vertices)
+   vertices = Vector{Vertex{vertex_type, weight_type}}(undef, n_vertices)
    for i=1:n_vertices
        vertices[i] = Vertex(i,vertex_type,initial_value, weight_type)
    end

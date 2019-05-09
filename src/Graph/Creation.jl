@@ -1,5 +1,4 @@
 using NearestNeighbors
-
 using StatsBase
 export VertexNeighborhood,
        KNNNeighborhood,
@@ -182,16 +181,16 @@ create(w_type::DataType, neighborhood::VertexNeighborhood, oracle::Function,X)
 Given a [`VertexNeighborhood`](@ref), a simmilarity function `oracle`  construct a simmilarity graph of the patterns in `X`.
 """
 function create(w_type::DataType, neighborhood::VertexNeighborhood, oracle::Function,X)
-   number_of_vertices = number_of_patterns(X)
-   g                  = Graph(number_of_vertices; weight_type= w_type)
+    number_of_vertices = number_of_patterns(X)
+    g = Graph(number_of_vertices; weight_type= w_type)
     @Threads.threads  for j=1:number_of_vertices
-       neigh   = neighbors(neighborhood,j,X)
-       x_j     = get_element(X,j)
-       x_neigh = get_element(X,neigh)
-       weights = oracle(j,neigh,x_j,x_neigh)
+        neigh = neighbors(neighborhood,j,X)
+        x_j = get_element(X,j)
+        x_neigh = get_element(X,neigh)
+        weights = oracle(j,neigh,x_j,x_neigh)
         connect!(g, j,neigh,weights)
     end
-    gc()
+    GC.gc()
     return g
 end
 """
