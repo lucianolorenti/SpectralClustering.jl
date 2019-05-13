@@ -17,3 +17,6 @@ function get_source_destiny_weight(g::Graph)
     end
     return sources, destiny, weights
 end
+function fixed_layout(source::AbstractVector{Int}; destiny::AbstractVector{Int}, weights::AbstractVector; locations::Matrix, kw...)
+    return locations[:, 1], locations[:,2]
+end
