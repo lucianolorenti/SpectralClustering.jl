@@ -215,14 +215,13 @@ They \"used a single value of \$K=7\$, which gave good results even for high-dim
 
 """
 function local_scale(neighborhood::KNNNeighborhood,oracle::Function,X; k=7)
-
   number_of_vertices = number_of_patterns(X)
-  temp               = oracle(get_element(X,1), get_element(X,2))
-  scales             = zeros(size(temp,1), number_of_vertices)
+  temp = oracle(get_element(X,1), get_element(X,2))
+  scales = zeros(size(temp,1), number_of_vertices)
   for j =1:number_of_vertices
       neigh = neighbors(neighborhood,j,X)
       neigh = neigh[end]
-      scales[:,j] = oracle(get_element(X,j), get_element(X,neigh))
+      scales[:,j] .= oracle(get_element(X,j), get_element(X,neigh))
   end
   return scales
 end

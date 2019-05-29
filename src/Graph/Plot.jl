@@ -1,6 +1,9 @@
 using Plots
 using GraphRecipes
 import GraphRecipes: get_source_destiny_weight
+
+export fixed_layout
+
 function get_source_destiny_weight(g::Graph)
     L = ne(g)
     sources = Array{Int}(undef, L)
@@ -17,6 +20,6 @@ function get_source_destiny_weight(g::Graph)
     end
     return sources, destiny, weights
 end
-function fixed_layout(source::AbstractVector{Int}; destiny::AbstractVector{Int}, weights::AbstractVector; locations::Matrix, kw...)
-    return locations[:, 1], locations[:,2]
+function fixed_layout(locations::AbstractArray{T,2}, adjmat::AbstractMatrix; kw...) where T
+    return locations[1, :], locations[2, :], zeros(Int, size(locations, 2))
 end
