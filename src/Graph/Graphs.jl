@@ -15,18 +15,16 @@ using LightGraphs
 
 import LightGraphs: nv, ne, has_edge, is_directed
 
-import Base.start
-import Base.next
-import Base.done
 import Base.length
 import Base.empty!
+import Base.iterate
 """
 ```julia
 type Edge
 ```
 
 """
-struct Edge{T}
+mutable struct Edge{T}
   next_v1::Union{Nothing,Edge{T}}
   prev_v1::Union{Nothing,Edge{T}}
   next_v2::Union{Nothing,Edge{T}}
@@ -38,7 +36,7 @@ end
 function weight_type(edge::Edge{T}) where T
     return T
 end
-struct Vertex{T, EdgeType}
+mutable struct Vertex{T, EdgeType}
    id::Integer
    data::T
    edges::Union{Nothing,Edge{EdgeType}}
@@ -78,7 +76,7 @@ Graph(n_vertices::Integer=0; vertex_type::DataType  = Any ,initial_value=nothing
 Construct an undirected weighted grpah of `n_vertices` vertices.
 """
 function Graph(n_vertices::Integer=0; vertex_type::DataType  = Any ,initial_value=nothing, weight_type::DataType = Float64)
-   vertices = Vector{Vertex{vertex_type, weight_type}}(n_vertices)
+   vertices = Vector{Vertex{vertex_type, weight_type}}(undef, n_vertices)
    for i=1:n_vertices
        vertices[i] = Vertex(i,vertex_type,initial_value, weight_type)
    end
@@ -224,21 +222,6 @@ function connect!(g::Graph,i::Integer,j::Integer,w::Number)
 
 end
 
-function _advance(e::Edge,v::Vertex,ei::EdgeIterator)
-   ei.e = e
-   if (e.v1 == v)
-        ei.i=1
-   else
-        ei.i=2
-   end
-end
-function _start(e::Edge,v::Vertex)
-   ei = EdgeIterator(nothing,-1)
-   if (ei!=nothing)
-       _advance(e,v,ei)
-   end
-   return ei
-end
 """
 ```julia
 target_vertex(e::Edge,v::Vertex)
@@ -263,30 +246,27 @@ Return the number of edges connected to a given vertex.
 function length(v::Vertex)
     return v.number_of_edges
 end
-function start(v::Vertex)
-    if (v.edges!=nothing)
-       return _start(v.edges,v)
+function iterate(v::Vertex)
+    if v.edges == nothing
+        return nothing
     else
-        return EdgeIterator(nothing,0)
+        edge = v.edges
+        next_edge = edge.v1 == v ? edge.next_v1 : edge.next_v2
+        return (edge, next_edge)
     end
 end
-function done(v::Vertex,ei::EdgeIterator)
-    return ei.e == nothing
-end
-function next(v::Vertex,ei::EdgeIterator)
-    edge = ei.e
-    if (ei.i == 1)
-        edge_next = ei.e.next_v1
+
+function iterate(v::Vertex, state)
+    edge = state
+    if edge == nothing
+        return nothing
     else
-        edge_next = ei.e.next_v2
+        next_edge = edge.v1 == v ? edge.next_v1 : edge.next_v2
+        return (edge, next_edge)
     end
-    if (edge_next != nothing)
-        _advance(edge_next,v,ei)
-    else
-       ei.e=nothing
-    end
-    return (edge, ei)
-end
+end    
+    
+    
 
 import Base.show
 function show(io::IO, e::Edge)
@@ -514,7 +494,7 @@ end
 
 include("Creation.jl")
 include("Matrices.jl")
-#include("Plot.jl")
+include("Plot.jl")
 
 #=Example
 g = Graph(11)

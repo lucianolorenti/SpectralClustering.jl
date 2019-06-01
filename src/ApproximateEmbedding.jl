@@ -222,15 +222,12 @@ function embedding(cfg::NystromMethod, landmarks::Vector{<:Integer}, X)
 end
 
 function compute_dhat(AA::Matrix{T}, BB::Matrix{T}) where T
-   n    = size(AA,1)
-   m    = size(BB,2)
-   dhat = zeros(T,n+m)
-    #d1        = sum(vcat(A,B'),1)
+    n = size(AA,1)
+    m = size(BB,2)
+    dhat = zeros(T,n+m)
     dhat[1:n] = sum(AA, dims=1) + sum(BB, dims=2)'
-    #d2        = sum(B,1) + sum(B',1)*pinv(A)*B
-    dhat[n+1:end] =  sum(BB, dims=1) + sum(BB, dims=2)'*pinv(AA)*BB
-    #dhat= sqrt(1./(hcat(d1,d2)+eps()))'
-    dhat[dhat .< 0] .= 0
+    dhat[n+1:end] = sum(BB, dims=1) + sum(BB, dims=2)'*pinv(AA)*BB
+    dhat[dhat.<0] .= 0
     return 1 ./ (sqrt.(dhat).+eps())
 end
 function compute_V(AA::Matrix{T}, BB::Matrix{T}, nvec::Integer) where T<:Number
