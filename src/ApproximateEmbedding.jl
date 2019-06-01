@@ -230,6 +230,7 @@ function compute_dhat(AA::Matrix{T}, BB::Matrix{T}) where T
     #d2        = sum(B,1) + sum(B',1)*pinv(A)*B
     dhat[n+1:end] =  sum(BB, dims=1) + sum(BB, dims=2)'*pinv(AA)*BB
     #dhat= sqrt(1./(hcat(d1,d2)+eps()))'
+    dhat[dhat .< 0] .= 0
     return 1 ./ (sqrt.(dhat).+eps())
 end
 function compute_V(AA::Matrix{T}, BB::Matrix{T}, nvec::Integer) where T<:Number
