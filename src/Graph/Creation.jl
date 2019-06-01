@@ -80,10 +80,10 @@ neighbors(cfg::PixelNeighborhood, j::Integer, img)
 Returns the neighbors of the pixel j according to the specified in [`PixelNeighborhood`](@ref)
 """
 function neighbors(cfg::PixelNeighborhood, j::Integer, img::Matrix{T}) where T<: Colorant
-    pos = ind2sub(size(img),j)
+    pos = CartesianIndices(img)[j]
     w_r = max(pos[1]-cfg.e,1):min(pos[1]+cfg.e, size(img,1))
     w_c = max(pos[2]-cfg.e,1):min(pos[2]+cfg.e, size(img,2))
-    return vec(map(x->sub2ind(size(img),x[1],x[2]),CartesianRange((w_r,w_c))))
+    return vec(map(x->LinearIndices(img)[x[1],x[2]], CartesianIndices((w_r,w_c))))
 end
 
 """
@@ -183,7 +183,7 @@ Given a [`VertexNeighborhood`](@ref), a simmilarity function `oracle`  construct
 function create(w_type::DataType, neighborhood::VertexNeighborhood, oracle::Function,X)
     number_of_vertices = number_of_patterns(X)
     g = Graph(number_of_vertices; weight_type= w_type)
-    @Threads.threads  for j=1:number_of_vertices
+    @Threads.threads for j=1:number_of_vertices
         neigh = neighbors(neighborhood,j,X)
         x_j = get_element(X,j)
         x_neigh = get_element(X,neigh)

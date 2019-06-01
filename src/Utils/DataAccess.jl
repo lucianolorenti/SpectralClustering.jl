@@ -25,10 +25,12 @@ function get_element!(o::Matrix,  img::Matrix{C}, i::Vector{Integer}) where C<:C
 ```
 """
 function get_element!(o::D, img::Matrix{C}, i::Vector{<:Integer}) where D<:AbstractArray  where C<:Colorant
-    rows,cols   = ind2sub(size(img),i)
-    values = getindex.((img,), rows,cols)
-    @inbounds o[1,:] = cols
-    @inbounds o[2,:] = rows
+    car_inds = CartesianIndices(img)[i]
+    values = img[car_inds]
+    for (j, pos) in enumerate(car_inds)
+        @inbounds o[1, j] = pos[2]
+        @inbounds o[2, j] = pos[1]
+    end
     N = length(C)
     component = N >= 3 ? (comp1, comp2, comp3, alpha) : (comp1, alpha)
     for j=1:length(C)
@@ -99,14 +101,7 @@ number_of_patterns(X::Matrix{T}) where T<:Colorant = size(X,1)*size(X,2)
 ```
 Returns the sub indexes from the linear index ```i```
 """
-function spatial_position(img::Matrix, i::Int)
-  return   ind2sub(size(img),i)
-end
-
-function spatial_position(img::Matrix, i::Vector{M}) where M<:Integer
-  return   ind2sub(size(img),i)
-end
-
+spatial_position(img::Matrix, i) = CartesianIndices(img)[i]
 
 get_element(X::T,i) where T<:AbstractArray= view(X,:,i)
 number_of_patterns(X::T) where T<:AbstractArray    = size(X,2)
