@@ -22,6 +22,8 @@ The library provides functions that allow:
 * Approximate embedding
   * [Spectral grouping using the nystrom method](https://people.eecs.berkeley.edu/~malik/papers/FBCM-nystrom.pdf)
      * [Nystrom sampling depends on the eigenspectrum shape of the data](https://openreview.net/pdf?id=HJZvjvJPf)
+  * [Large Scale Spectral Clustering
+with Landmark-Based Representation](http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.365.6933&rep=rep1&type=pdf)
 * Multiple views
   * Kernel Addition
   * Kernel Product
