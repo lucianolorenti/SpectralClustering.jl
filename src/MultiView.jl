@@ -1,25 +1,25 @@
 export embedding,
        View,
-    CoRegularizedMultiView,
-    KernelProduct,
-    KernelAddition
+       CoRegularizedMultiView,
+       KernelProduct,
+       KernelAddition
 
 """
 A view
 
 ```julia
 struct View
-  ng_laplacian::NgLaplacian
-  lambda::Float64
+    embedder::NgLaplacian
+    lambda::Float64
 end
 ```
-The type View represents
-the member graph is a function that returns and embedding from the data.
-The member lambda is a parameter that scale the eigenvectors
-The member nev is the number of eigenvectors requested to the embedding
+# Members
+    - embedder::EigenvectorEmbedder
+    - lambda::Float64
+
 """
 struct View
-    embedder::EigenvectorEmbedder    
+    nev::Integer
     lambda::Float64
 end
 
@@ -30,74 +30,83 @@ end
 
 """
 struct CoRegularizedMultiView <: EigenvectorEmbedder
-    threshold::Float64
+    max_iterations::Integer
     views::Vector{View}
+end
+function CoRegularizedMultiView(views::Vector{View}; max_iterations::Integer=500)
+    return CoRegularizedMultiView(max_iterations, views)
 end
 """
 ```julia
 embedding(cfg::CoRegularizedMultiView, X::Vector)
 ```
 
+# Arguments
+    - `cfg::CoRegularizedMultiView`
+    - `X::Vector{Graph}`
+
 An example that shows how to use this methods is provied in the Usage section of the manual
 """
-function embedding(cfg::CoRegularizedMultiView, X::Vector; disagreement::Union{Nothing,Vector} = nothing)
-    U = Vector{Matrix}(length(cfg.views))
-    
-    Laplacians = [ sparse(NormalizedAdjacency(CombinatorialAdjacency(adjacency_matrix(X[i], dir=:both))))  for i=1:length(cfg.views) ]
+function embedding(cfg::CoRegularizedMultiView, X::Vector{Graph}; disagreement::Union{Nothing,Vector} = nothing)
+    U = Vector{Matrix}(undef, length(cfg.views))
+
+    Laplacians = [sparse(NormalizedAdjacency(CombinatorialAdjacency(adjacency_matrix(X[i], dir=:both))))  for i=1:length(cfg.views) ]
     #Initialize all U(v),2≤v≤m$
     for i=2:length(cfg.views)
-        U[i] =  embedding(cfg.views[i].embedder,Laplacians[i])
+        U[i] = embedding(NgLaplacian(cfg.views[i].nev, false), Laplacians[i])
     end
     curr_objective = -Inf
     prev_objective = 0
     best_objective = Inf
     iterations_without_improvement = 0
-    while (abs(curr_objective - prev_objective)  > cfg.threshold) && (iterations_without_improvement < 5)
+    threshold = 0.00001
+    iteration = 0
+    while  iteration < cfg.max_iterations && (abs(curr_objective - prev_objective)  > threshold) && (iterations_without_improvement < 8)
         for i=1:length(cfg.views)
            L = Laplacians[i]
             for j=1:length(cfg.views)
                 if (j!=i)
-                    L = L + cfg.views[i].lambda*U[j]*U[j]'
+                    L = L + cfg.views[j].lambda*U[j]*U[j]'
                 end
             end
-            U[i] = embedding(cfg.views[i].embedder, L)
+            U[i] = embedding(NgLaplacian(cfg.views[i].nev, false), L)
             prev_objective = curr_objective
-            curr_objective = sum([trace((U[i]*U[i]')*(U[j]*U[j]')) for j=1:length(U)  for d=1:length(U)])
+            curr_objective = sum([tr((U[d]*U[d]')*(U[j]*U[j]')) for j=1:length(U)  for d=1:length(U)])
             if curr_objective < best_objective
                 best_objective = curr_objective
                 iterations_without_improvement = 0
             else
-                iterations_without_improvement=iterations_without_improvement+1
+                iterations_without_improvement += 1
             end
             if (disagreement!=nothing)
                 push!( disagreement, curr_objective)
             end
-            
+            iteration += 1
         end
     end
     return U[1]
 end
 
 struct KernelAddition <: EigenvectorEmbedder
-    embedder::EigenvectorEmbedder    
+    embedder::EigenvectorEmbedder
 end
-function embedding(cfg::KernelAddition, X::Vector)
+function embedding(cfg::KernelAddition, X::Vector{Graph})
     W = adjacency_matrix(X[1])
     for j=2:length(X)
-        W_1 = adjacency_matrix(X[j])
-        W = W + W_1
+        W += adjacency_matrix(X[j])
     end
+    W = CombinatorialAdjacency(W)
     return  embedding(cfg.embedder, W)
 end
 struct KernelProduct <: EigenvectorEmbedder
     embedder::EigenvectorEmbedder
 end
-function embedding(cfg::KernelProduct, X::Vector)
+function embedding(cfg::KernelProduct, X::Vector{Graph})
     W = adjacency_matrix(X[1])
     for j=2:length(X)
-        W_1 = adjacency_matrix(X[j])
-        W = W .* W_1
+        W .*= adjacency_matrix(X[j])
     end
+    W = CombinatorialAdjacency(W)
     return embedding(cfg.embedder, W)
 end
 

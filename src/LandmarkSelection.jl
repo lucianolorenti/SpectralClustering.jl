@@ -2,8 +2,9 @@ export AbstractLandmarkSelection,
        LandmarkBasedRepresentation,
        RandomLandmarkSelection,
        EvenlySpacedLandmarkSelection,
-      select_landmarks,
-      MS3
+       select_landmarks,
+       BresenhamLandmarkSelection,
+       MS3
 using StatsBase
 """
 ```julia
@@ -64,8 +65,16 @@ select_landmarks(c::EvenlySpacedLandmarkSelection,n::Integer, X)
 """
 function select_landmarks(c::EvenlySpacedLandmarkSelection, n::Integer, X)
     m = number_of_patterns(X)
-    return collect(1:round(Integer,floor(m/n)):m)
+    return collect(1:round(Integer,floor(m/n)):m)[1:n]
 end
+
+struct BresenhamLandmarkSelection  <: AbstractLandmarkSelection
+end
+function select_landmarks(c::BresenhamLandmarkSelection, m::Integer, X)
+    n = number_of_patterns(X)
+    return round.(Integer, [(i-1)*n//m + n//(2*m) for i=1:m])
+end
+
 
 """
 ```
@@ -74,7 +83,7 @@ struct MS3 <: AbstractLandmarkSelection
     sim::Function
 end
 ```
-The `MS3` selection method selects  `m` 
+The `MS3` selection method selects  `m`
 NYSTROM SAMPLING DEPENDS ON THE EIGENSPECTRUM SHAPE OF THE DATA
 """
 
@@ -89,9 +98,9 @@ function select_landmarks(c::MS3, m::Integer, X)
        T_candidates  = setdiff(1:cant, points)
        T = rand(T_candidates, round(Integer,length(T_candidates)*c.proportion))
        min_simmilarity = Inf
-       min_point = 0        
+       min_point = 0
         for t in T
-           simmilarity = 0            
+           simmilarity = 0
             for p in points
                 simmilarity = simmilarity + c.sim(get_element(X,p), get_element(X,t))^2
             end
@@ -102,5 +111,5 @@ function select_landmarks(c::MS3, m::Integer, X)
         end
         push!(points, min_point)
     end
-    return points    
+    return points
 end

@@ -5,6 +5,7 @@ export EigenvectorEmbedder,
 abstract type EigenvectorEmbedder end
 
 include("Utils/DataAccess.jl")
+include("Utils/DataProcessing.jl")
 include("Graph/Graphs.jl")
 include("LandmarkSelection.jl")
 include("Embedding.jl")

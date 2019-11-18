@@ -38,6 +38,11 @@ function get_element!(o::D, img::Matrix{C}, i::Vector{<:Integer}) where D<:Abstr
     end
 end
 
+
+function get_element!(o::D, data::Matrix{C}, i::Integer) where D<:AbstractArray  where C<:Number
+    o[:] = data[:, i]
+end
+
 """
 ```julia
 function assign!(vec::T, val::C) where T<:AbstractArray where C<:Colorant
@@ -71,7 +76,7 @@ end
 
 """
 ```
-function get_element( img::Matrix{RGB}, i::Vector) 
+function get_element( img::Matrix{RGB}, i::Vector)
 ```
 """
 function get_element(img::Matrix{T}, i::Vector)  where T<:Colorant
