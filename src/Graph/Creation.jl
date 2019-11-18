@@ -1,15 +1,18 @@
 using NearestNeighbors
 using StatsBase
+using Statistics
 export VertexNeighborhood,
        KNNNeighborhood,
        create,
        PixelNeighborhood,
        local_scale,
        neighbors,
-       RandomNeighborhood
+       RandomNeighborhood,
+       CliqueNeighborhood
 
 
 import SpectralClustering: spatial_position
+import Base.ones
 """
 ```julia
 struct RandomKGraph
@@ -32,15 +35,15 @@ Construct a [`RandomKGraph`](@ref) such that every vertex is connected with othe
 """
 function create(cfg::RandomKGraph)
     g = Graph(cfg.number_of_vertices)
-    for i=1:cfg.number_of_vertices
+    for i = 1:cfg.number_of_vertices
         cant = 0
         while cant < cfg.k
             selected = rand(1:cfg.number_of_vertices)
             while selected == i
                 selected = rand(1:cfg.number_of_vertices)
             end
-            connect!(g,i,selected,rand())
-            cant=cant +1
+            connect!(g, i, selected, rand())
+            cant = cant + 1
         end
     end
     return g;
@@ -79,11 +82,11 @@ neighbors(cfg::PixelNeighborhood, j::Integer, img)
 
 Returns the neighbors of the pixel j according to the specified in [`PixelNeighborhood`](@ref)
 """
-function neighbors(cfg::PixelNeighborhood, j::Integer, img::Matrix{T}) where T<: Colorant
+function neighbors(cfg::PixelNeighborhood, j::Integer, img::Matrix{T}) where T <: Colorant
     pos = CartesianIndices(img)[j]
-    w_r = max(pos[1]-cfg.e,1):min(pos[1]+cfg.e, size(img,1))
-    w_c = max(pos[2]-cfg.e,1):min(pos[2]+cfg.e, size(img,2))
-    return vec(map(x->LinearIndices(img)[x[1],x[2]], CartesianIndices((w_r,w_c))))
+    w_r = max(pos[1] - cfg.e, 1):min(pos[1] + cfg.e, size(img, 1))
+    w_c = max(pos[2] - cfg.e, 1):min(pos[2] + cfg.e, size(img, 2))
+    return vec(map(x->LinearIndices(img)[x[1],x[2]], CartesianIndices((w_r, w_c))))
 end
 
 """
@@ -101,8 +104,8 @@ neighbors(config::CliqueNeighborhood, j::Integer, X)
 ```
 Return every other vertex index different from \$j\$. See [`CliqueNeighborhood`](@ref)
 """
-function neighbors(config::CliqueNeighborhood,j::Integer,X)
-  return filter!(x->x!=j,collect(1:number_of_patterns(X)))
+function neighbors(config::CliqueNeighborhood, j::Integer, X)
+  return filter!(x->x != j, collect(1:number_of_patterns(X)))
 end
 """
 ```julia
@@ -130,13 +133,14 @@ Create the [`KNNNeighborhood`](@ref) type by building a `k`-nn tre from de data 
 
 Return the indexes of the `config.k` nearest neigbors of the data point `j` of the data `X`.
 """
-function KNNNeighborhood(X, k::Integer, f::Function=x->x)
-   tree = KDTree(hcat([f(get_element(X,j)) for j=1:number_of_patterns(X)]...))
+function KNNNeighborhood(X, k::Integer, f::Function = x->x)
+   tree = KDTree(hcat([f(get_element(X, j)) for j = 1:number_of_patterns(X)]...))
     return KNNNeighborhood(k, tree, f)
 end
-function neighbors(config::KNNNeighborhood,j::Integer,X)
-    idxs, dists = knn(config.tree, config.t(get_element(X,j)), config.k+1, true)
-    return idxs[2:config.k+1]
+neighbors(config::KNNNeighborhood, j::Integer, X) = neighbors(config, get_element(X, j))
+function neighbors(config::KNNNeighborhood, data)
+    idxs, dists = knn(config.tree, config.t(data), config.k + 1, true)
+    return idxs[2:config.k + 1]
 end
 """
 ```@julia
@@ -150,14 +154,14 @@ struct RandomNeighborhood <: VertexNeighborhood
     k::Integer
 end
 function neighbors(config::RandomNeighborhood, j::Integer, X)
-   samples = StatsBase.sample(1:number_of_patterns(X),config.k,replace=false)
+   samples = StatsBase.sample(1:number_of_patterns(X), config.k, replace = false)
     if (in(j, samples))
-        filter!(e->e!=j,samples)
+        filter!(e->e != j, samples)
     end
     while (length(samples) < config.k)
        s  =  StatsBase.sample(1:number_of_patterns(X), 1)[1]
-        if (s!=j)
-            push!(samples,s)
+        if (s != j)
+            push!(samples, s)
         end
     end
     return samples
@@ -168,10 +172,10 @@ weight{T<:DataAccessor}(w::Function,d::T, i::Int,j::Int,X)
 ```
 Invoke the weight function provided to compute the similarity between the pattern `i` and the pattern `j`.
 """
-function weight(w::Function,i::Integer,j::Integer,X)
-  x_i = get_element(X,i)
-  x_j = get_element(X,j)
-  return w(i,j,x_i,x_j)
+function weight(w::Function, i::Integer, j::Integer, X)
+  x_i = get_element(X, i)
+  x_j = get_element(X, j)
+  return w(i, j, x_i, x_j)
 end
 
 """
@@ -180,15 +184,15 @@ create(w_type::DataType, neighborhood::VertexNeighborhood, oracle::Function,X)
 ```
 Given a [`VertexNeighborhood`](@ref), a simmilarity function `oracle`  construct a simmilarity graph of the patterns in `X`.
 """
-function create(w_type::DataType, neighborhood::VertexNeighborhood, oracle::Function,X)
+function create(w_type::DataType, neighborhood::VertexNeighborhood, oracle::Function, X)
     number_of_vertices = number_of_patterns(X)
-    g = Graph(number_of_vertices; weight_type= w_type)
-    @Threads.threads for j=1:number_of_vertices
-        neigh = neighbors(neighborhood,j,X)
-        x_j = get_element(X,j)
-        x_neigh = get_element(X,neigh)
-        weights = oracle(j,neigh,x_j,x_neigh)
-        connect!(g, j,neigh,weights)
+    g = Graph(number_of_vertices; weight_type = w_type)
+    @Threads.threads for j = 1:number_of_vertices
+        neigh = neighbors(neighborhood, j, X)
+        x_j = get_element(X, j)
+        x_neigh = get_element(X, neigh)
+        weights = oracle(j, neigh, x_j, x_neigh)
+        connect!(g, j, neigh, weights)
     end
     GC.gc()
     return g
@@ -204,39 +208,37 @@ function create(neighborhood::VertexNeighborhood, oracle::Function, X)
 end
 """
 ```julia
-local_scale(neighborhood::KNNNeighborhood, oracle::Function, X; k = 7)
+local_scale(neighborhood::KNNNeighborhood, oracle::Function, X; k::Integer = 7)
 ```
 Computes thescale of each pattern according to [Self-Tuning Spectral Clustering](https://papers.nips.cc/paper/2619-self-tuning-spectral-clustering.pdf).
 Return a matrix containing for every pattern the local_scale.
+
+# Arguments
+    - `neighborhood::KNNNeighborhood`
+    - `oracle::Function`
+    - `X` 
+      the data
 
 \"The selection of thescale \$ \\sigma \$ can be done by studying thestatistics of the neighborhoods surrounding points \$ i \$ and \$ j \$ .i \"
 Zelnik-Manor and Perona use \$ \\sigma_i = d(s_i, s_K) \$ where \$s_K\$ is the \$ K \$ neighbor of point \$ s_i \$ .
 They \"used a single value of \$K=7\$, which gave good results even for high-dimensional data \" .
 
 """
-function local_scale(neighborhood::KNNNeighborhood,oracle::Function,X; k=7)
-  number_of_vertices = number_of_patterns(X)
-  temp = oracle(get_element(X,1), get_element(X,2))
-  scales = zeros(size(temp,1), number_of_vertices)
-  for j =1:number_of_vertices
-      neigh = neighbors(neighborhood,j,X)
-      neigh = neigh[end]
-      scales[:,j] .= oracle(get_element(X,j), get_element(X,neigh))
-  end
-  return scales
-end
-function local_scale(neighborhood:: PixelNeighborhood,oracle::Function, img)
+function local_scale(neighborhood::T, oracle::Function, X; k::Integer = 7, sortdim::Integer=1) where T<:VertexNeighborhood
+    sort_data(d::AbstractArray; dims=1) = sort(d)
+    sort_data(d::AbstractMatrix; dims=1) = sort(d, dims=dims)
+    number_of_vertices = number_of_patterns(X)
+    temp = oracle(0, [0], get_element(X, 1), get_element(X, [1, 2]))
+    scales = zeros(size(temp, 2), number_of_vertices)
+    for j = 1:number_of_vertices
+        neigh = neighbors(neighborhood, j, X)
+        distances = oracle(j, neigh, get_element(X, j), get_element(X, neigh))
 
-  number_of_vertices = number_of_patterns(img)
-  temp               = oracle(1, img, (1,2))
-  scales             = zeros(size(temp,1),number_of_vertices)
-
-  for j=1:number_of_vertices
-      neigh = spatial_position(img,neighbors(neighborhood,j,img))
-      scales[:,j] = oracle(j, img, neigh)
-  end
-  return scales
+        scales[:, j] .= sort_data(distances, dims=sortdim)[k, :]
+    end
+    return scales
 end
+
 
 #="""
 Given a graph (g) created from a X_prev \in R^{d x n}, updates de graph from
@@ -258,3 +260,7 @@ function update!(config::GraphCreationConfig,g::Graph,X)
   end
 end
 =#
+
+# Weight functions
+constant(k) = (i::Integer, neigh, v, m) = ones(size(m, 2)) * k
+ones(i::Integer, neigh, v, m) = ones(size(m, 2))

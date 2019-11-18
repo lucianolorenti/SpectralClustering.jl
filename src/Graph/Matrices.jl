@@ -11,7 +11,7 @@ This function is optimized for speed and directly manipulates CSC sparse matrix 
 """
 function adjacency_matrix(g::Graph, T::DataType=Float64; dir::Symbol=:out)
    n_v = nv(g)
-   nz = ne(g)  
+   nz = ne(g)
    colpt = ones(Int64, n_v + 1)
 
    rowval = sizehint!(Vector{Int64}(), nz)

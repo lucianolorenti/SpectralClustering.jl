@@ -2,7 +2,7 @@ export clusterize,
        KMeansClusterizer,
        YuEigenvectorRotation,
        EigenvectorClusterizer,
-       EigenvectorsClusteringResult
+       EigenvectorClusteringResult
 
 using Clustering
 
@@ -46,37 +46,42 @@ end
 function YuEigenvectorRotation()
     return YuEigenvectorRotation(500)
 end
-function clusterize(cfg::YuEigenvectorRotation,V::Matrix)
-    (N,k) = size(V)
-    V = spdiagm(1 ./ sqrt.(vec(mapslices(norm,V,2))))*V
-    hasConverged = false
-    R = zeros(k,k)
-    R[:,1] = [ V[rand(1:N),i] for i = 1:k ]
-    c = zeros(N)
-    for j=2:k
-        c = c+abs.(V*R[:,j-1])
-        R[:, j] = V[findmin(c)[2], :]'
-    end
-   lastObjectiveValue = Inf
-   nIter              = 0
-   ncut_value         = 0
-    while !hasConverged
-        nIter            = nIter+ 1
-        t_discrete       = V*R
+function clusterize(cfg::YuEigenvectorRotation, X_star_hat::Matrix)
+     (N,k) = size(X_star_hat)
+     X_star_hat = spdiagm(0=>1 ./ sqrt.(vec(mapslices(norm, X_star_hat, dims=[2]))))*X_star_hat
+     hasConverged = false
+     R_star = zeros(k,k)
+     R_star[:, 1] = [X_star_hat[rand(1:N), i] for i = 1:k ]
+     c = zeros(N)
+     for j=2:k
+        c = c + abs.(X_star_hat*R_star[:,j-1])
+        i = findmin(c)[2]
+        R_star[:, j] = X_star_hat[i, :]'
+     end
+     lastObjectiveValue = Inf
+     nIter = 0
+     ncut_value = 0
+     X_star = nothing
+     while !hasConverged
+        nIter = nIter+ 1
+        X_hat = X_star_hat*R_star  
         #non maximum supression
-        labels           = ind2sub(size(V),vec(findmax(V,2)[2]))[2]
-        vectors_discrete = sparse(collect(1:N), labels,ones(Int64,length(labels)),      N,k)
-        t_svd            = full(vectors_discrete' * vectors_discrete)
-        U, S, Vh         = svd(t_svd)
-        ncutValue        = 2.0 * (N - sum(S,1))
-        if ((abs(ncutValue[1] - lastObjectiveValue) < eps()) || (nIter > cfg.maxIter))
+        labels = vec([I[2] for I in findmax(X_hat, dims=2)[2]])
+        X_star = zeros(size(X_star_hat))
+        for (i, l) = enumerate(labels)
+            X_star[i, l] = l
+        end
+        F = svd(X_star' * X_star_hat, full=true)
+        U, S, Vh = (F.U, F.S, F.Vt)
+        ncutValue = sum(S)
+        if ((abs(ncutValue - lastObjectiveValue) < eps()) || (nIter > cfg.maxIter))
             hasConverged = true
         else
-            lastObjectiveValue = ncutValue[1]
-            R= Vh'*U'
+            lastObjectiveValue = ncutValue
+            R_star = Vh'*U'            
         end
     end
-    labels = ind2sub(size(V),vec(findmax(V,2)[2]))[2]
+    labels = vec([I[2] for I in findmax(X_star, dims=2)[2]])
     return EigenvectorClusteringResult(labels)
 end
 """
@@ -89,6 +94,6 @@ by `C<:EigenvectorClusterize`.
 
 """
 function clusterize(cfg::T, clus::C, X) where T<:EigenvectorEmbedder where C<:EigenvectorClusterizer
- E = embedding(cfg,X)
-  return clusterize(clus, E)
+    E = embedding(cfg,X)
+    return clusterize(clus, E)
 end

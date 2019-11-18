@@ -43,13 +43,13 @@ mutable struct Vertex{T, EdgeType}
    number_of_edges::Integer
    degree::Float64
    connections::Set{Integer}
-   lock::Threads.TatasLock
+   lock::Threads.SpinLock
 end
 function weight_type(v::Vertex{V,E}) where V where E
     return E
 end
 function Vertex(id::Integer,d::DataType = Any, val=nothing, weight_type::DataType=Float64)
-    return Vertex{d, weight_type}(id,val,nothing,0,0, Set{Integer}(),Threads.TatasLock())
+    return Vertex{d, weight_type}(id,val,nothing,0,0, Set{Integer}(),Threads.SpinLock())
 end
 function Edge(v1::Vertex,v2::Vertex,w::Number)
     return Edge{weight_type(v1)}(nothing,nothing,nothing,nothing,v1,v2,convert(weight_type(v1),w))
@@ -270,7 +270,7 @@ end
 
 import Base.show
 function show(io::IO, e::Edge)
-  println(string(e.v1.id," -(",e.weight, ")> ",e.v2.id))
+  println(string(e.v1.id," -(",e.weight, ")-> ",e.v2.id))
 end
 function show(io::IO, g::Graph)
   for vertex in g.vertices
@@ -282,12 +282,13 @@ function show(io::IO, g::Graph)
 end
 
 function show(io::IO, v::Vertex)
-  println("Vertice" )
-  println("id: $(v.id)" )
-  println("Datos: $(v.data)" )
-  println("Aristas: $(v.number_of_edges)" )
-  println("Grado: $(v.degree)" )
-
+    repr = "Vertex $(v.id) ("
+    if v.data != nothing
+      repr *= "data=$(v.data), "
+    end
+    repr *= "n_edges=$(v.number_of_edges), "
+    repr *= "degree=$(v.degree))"
+    println(repr)
 end
 function find_edge(p, v::Vertex)
      for e in v
@@ -496,13 +497,3 @@ include("Creation.jl")
 include("Matrices.jl")
 include("Plot.jl")
 
-#=Example
-g = Graph(11)
-connect!(g,3,2,5)
-connect!(g,2,1,5)
-remove_vertex!(g,1)
-add_vertex!(g)
-add_vertex!(g)
-remove_vertex!(g,3)
-remove_vertex!(g,2)
-=#

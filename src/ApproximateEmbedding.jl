@@ -1,63 +1,73 @@
 using Clustering,
     LightGraphs,
     SparseArrays,
-    LinearAlgebra
+    LinearAlgebra,
+    Arpack
 export NystromMethod,
        LandmarkBasedRepresentation,
        DNCuts
+
+
 """
 Large Scale Spectral Clustering with Landmark-Based Representation
 Xinl ei Chen Deng Cai
 
+# Members
+- `landmark_selector::{T <: AbstractLandmarkSelection}` Method for extracting landmarks
+- `number_of_landmarks::Integer` Number of landmarks to obtain
+- `n_neighbors::Integer` Number of nearest neighbors
+- `nev::Integer` Number of eigenvectors
+- `w::Function` Number of clusters to obtain
+- `normalize::Bool`
 """
-struct LandmarkBasedRepresentation{T<:AbstractLandmarkSelection}
-  landmark_selector::T
-  number_of_landmarks::Integer
-  r::Integer #nearest landamrks
-  k::Integer
+struct LandmarkBasedRepresentation{T <: AbstractLandmarkSelection}
+    landmark_selector::T
+    number_of_landmarks::Integer
+    n_neighbors::Integer
+    nev::Integer
+    w::Function
+    normalize::Bool
 end
-"""
-clusterize(cfg::LandmarkBasedRepresentation,X)
 
 """
-function clusterize(cfg::LandmarkBasedRepresentation,X)
-  n = number_of_patterns(X)
-  p = number_of_landmarks(cfg.landmarks, X)
-  landmarks = select_landmarks(cfg.landmarks,X)
-  tree = RTree(length(get_element(X,1)[1:2]))
-  for i= 1:length(landmarks)
-    vec_i  = get_element(X,landmarks[i])
-    add_point!(tree,i,vec_i[1:2])
-  end
-  I = zeros(Integer,cfg.r*n)
-  J = zeros(Integer,cfg.r*n)
-  Z = zeros(Float64,cfg.r*n)
-  c=1
-  params = [15,0.2]
-  for i=1:n
-    vec_i = get_element(X,i)
-    nn     = k_nearest_neighbors_id(tree,cfg.r,vec_i[1:2])
-    for j in nn
-      deno = sum( [w(vec_i, get_element(X,l),params) for l in nn])
-      nume = cfg.w(vec_i, get_element(X,j),params)
-      I[c] = j
-      J[c] = i
-      Z[c] = nume/(deno)
-      c = c + 1
+```
+embedding(cfg::LandmarkBasedRepresentation, X)
+```
+
+
+"""
+function embedding(cfg::LandmarkBasedRepresentation, X)
+
+    n = number_of_patterns(X)
+    p = cfg.number_of_landmarks
+    landmark_indices = select_landmarks(cfg.landmark_selector, p, X)
+    landmarks = get_element(X, landmark_indices)
+    neighbors_cfg = KNNNeighborhood(landmarks, cfg.n_neighbors)
+
+
+    I = zeros(Integer, n*cfg.n_neighbors)
+    J = zeros(Integer, n*cfg.n_neighbors)
+    V = zeros(n*cfg.n_neighbors)
+    for i = 1:n
+        i_neighbors =  neighbors(neighbors_cfg, get_element(X, i))
+        weights = cfg.w(i, [], get_element(X, i), get_element(landmarks, i_neighbors))
+        weights ./= sum(weights)
+        for (j, (neigh, w)) in enumerate(zip(i_neighbors, weights))
+            I[(i-1)*cfg.n_neighbors + j] = neigh
+            J[(i-1)*cfg.n_neighbors + j] = i
+            V[(i-1)*cfg.n_neighbors + j] = w
+        end
     end
-  end
-  Z=sparse(I,J,Z,p,n)
-  p=zeros(p)
-  (s,A) = eigs(Z*Z',nev=3,maxiter=1000, v0= v0)
-  S=spdiagm(1 ./ (sqrt(s)+eps()))
-  B=S*A'*Z
+    Z = sparse(I, J, V, p, n)
 
-  for j=1:size(B,2)
-    B[:,j]=B[:,j]./(norm(B[:,j])+eps())
-  end
-  result = Clustering.kmeans(B,cfg.k, init=:kmcen)
-  return result.assignments
-
+    (svd) = svds(Z*Z', nsv=cfg.nev)[1]
+    v = svd.S
+    S = spdiagm(0=>1 ./ (sqrt.(v)))[1]
+    B = S * svd.U' * Z
+    if cfg.normalize
+        B = normalize_cols(B)
+    end
+    return B'
 end
 
 """
@@ -80,17 +90,17 @@ points.
 - `nvec::Integer`. The number of eigenvector to obtain.
 - `threaded::Bool`. Default: True. Specifies whether the threaded version is used.
 """
-struct NystromMethod{T<:AbstractLandmarkSelection} <: EigenvectorEmbedder
-  landmarks_selector::T
-  number_of_landmarks::Integer
-  w::Function
-  nvec::Integer
-  threaded::Bool
+struct NystromMethod{T <: AbstractLandmarkSelection} <: EigenvectorEmbedder
+    landmarks_selector::T
+    number_of_landmarks::Integer
+    w::Function
+    nvec::Integer
+    threaded::Bool
 end
 function NystromMethod(landmarks_selector::T,
                        number_of_landmarks::Integer,
                        w::Function,
-                       nvec::Integer) where T<:AbstractLandmarkSelection
+                       nvec::Integer) where T <: AbstractLandmarkSelection
     return NystromMethod(landmarks_selector,
                          number_of_landmarks,
                          w,
@@ -115,54 +125,54 @@ The function computes \$A\$ and \$B\$ from the data ```X``` using the weight fun
 ```cfg```.
 """
 function create_A_B(cfg::NystromMethod, landmarks::Vector{<:Integer}, X)
-    n         = number_of_patterns(X)
-    p         = length(landmarks)
+    n = number_of_patterns(X)
+    p = length(landmarks)
     indexes_b = setdiff(collect(1:n), landmarks)
-    m         = length(indexes_b)
-    n         = p
-    A         = zeros(Float32,p,p)
-    B         = zeros(Float32,p,m)
-    qq = length(get_element(X,1))
-    landmarks_m = zeros(Float32,length(get_element(X,1)), length(landmarks))
+    m = length(indexes_b)
+    n = p
+    A = zeros(Float32, p, p)
+    B = zeros(Float32, p, m)
+    qq = length(get_element(X, 1))
+    landmarks_m = zeros(Float32, length(get_element(X, 1)), length(landmarks))
     # Get a copy of the landamrks
     for j = 1:length(landmarks)
-        get_element!(view(landmarks_m,:,j),X,landmarks[j])
+        get_element!(view(landmarks_m, :, j), X, landmarks[j])
     end
-    Threads.@threads for j=1:length(landmarks)
-        A[:,j] = cfg.w(landmarks[j], landmarks, view(landmarks_m,:,j), landmarks_m )
+    Threads.@threads for j = 1:length(landmarks)
+        A[:,j] = cfg.w(landmarks[j], landmarks, view(landmarks_m, :, j), landmarks_m)
     end
-    
-    vec_k = zeros(Float32,length(get_element(X,1)), Threads.nthreads())
-    Threads.@threads for k=1:length(indexes_b)
+
+    vec_k = zeros(Float32, length(get_element(X, 1)), Threads.nthreads())
+    Threads.@threads for k = 1:length(indexes_b)
        thread_id = Threads.threadid()
-       get_element!(view(vec_k,:,thread_id),X,indexes_b[k])
-       B[:,k] = cfg.w(indexes_b[k], landmarks, view(vec_k,:,thread_id), landmarks_m)
+       get_element!(view(vec_k, :, thread_id), X, indexes_b[k])
+       B[:,k] = cfg.w(indexes_b[k], landmarks, view(vec_k, :, thread_id), landmarks_m)
     end
-    return (A,B)
+    return (A, B)
 end
 
 function create_A_B_single_thread(cfg::NystromMethod, landmarks::Vector{<:Integer}, X)
-   n         = number_of_patterns(X)
-   p         = length(landmarks)
-   indexes_b = setdiff(collect(1:n), landmarks)
-   m         = length(indexes_b)
-    n               = p
-   A         = zeros(Float32,p,p)
-   B         = zeros(Float32,p,m)
-   qq = length(get_element(X,1))
-   landmarks_m = zeros(Float32,length(get_element(X,1)), length(landmarks))
+    n = number_of_patterns(X)
+    p = length(landmarks)
+    indexes_b = setdiff(collect(1:n), landmarks)
+    m  = length(indexes_b)
+    n = p
+    A = zeros(Float32, p, p)
+    B = zeros(Float32, p, m)
+    qq = length(get_element(X, 1))
+    landmarks_m = zeros(Float32, length(get_element(X, 1)), length(landmarks))
     for j = 1:length(landmarks)
-       get_element!(view(landmarks_m,:,j),X,landmarks[j])
+        get_element!(view(landmarks_m, :, j), X, landmarks[j])
     end
-    for j=1:length(landmarks)
-      A[:,j] = cfg.w(landmarks[j], landmarks, view(landmarks_m,:,j), landmarks_m )
+    for j = 1:length(landmarks)
+        A[:,j] = cfg.w(landmarks[j], landmarks, view(landmarks_m, :, j), landmarks_m)
     end
-   vec_k = zeros(Float32,length(get_element(X,1)))
-    for k=1:length(indexes_b)
-       get_element!(vec_k,X,indexes_b[k])
+    vec_k = zeros(Float32, length(get_element(X, 1)))
+    for k = 1:length(indexes_b)
+       get_element!(vec_k, X, indexes_b[k])
        B[:,k] = cfg.w(indexes_b[k], landmarks, vec_k, landmarks_m)
     end
-    return (A,B)
+    return (A, B)
 end
 """
 create_A_B(cfg::NystromMethod, X)
@@ -183,11 +193,11 @@ Returns the two submatrices and the sampled points used to calcluate it
 function create_A_B(cfg::NystromMethod, X)
   landmarks = select_landmarks(cfg.landmarks_selector, cfg.number_of_landmarks, X)
   if (cfg.threaded)
-      (A,B) = create_A_B(cfg::NystromMethod,landmarks, X)
+      (A, B) = create_A_B(cfg::NystromMethod, landmarks, X)
   else
-      (A,B) = create_A_B_single_thread(cfg::NystromMethod,landmarks, X)
+      (A, B) = create_A_B_single_thread(cfg::NystromMethod, landmarks, X)
   end
-  return (A,B,landmarks)
+  return (A, B, landmarks)
 end
 """
 embedding(cfg::NystromMethod, X)
@@ -199,7 +209,7 @@ function embedding(cfg::NystromMethod, X)
     landmarks = select_landmarks(cfg.landmarks_selector,
                                  cfg.number_of_landmarks,
                                  X)
-    return embedding(cfg,landmarks,X)
+    return embedding(cfg, landmarks, X)
 end
 """
 embedding(cfg::NystromMethod, landmarks::Vector{Int}, X)
@@ -214,43 +224,43 @@ Performs the eigenvector embedding according to
 """
 function embedding(cfg::NystromMethod, landmarks::Vector{<:Integer}, X)
     if (cfg.threaded)
-        (A,B) = create_A_B(cfg,landmarks,X)
+        (A, B) = create_A_B(cfg, landmarks, X)
     else
-        (A,B) = create_A_B_single_thread(cfg, landmarks, X)
+        (A, B) = create_A_B_single_thread(cfg, landmarks, X)
     end
-    return embedding(cfg,A,B,landmarks)
+    return embedding(cfg, A, B, landmarks)
 end
 
 function compute_dhat(AA::Matrix{T}, BB::Matrix{T}) where T
-    n = size(AA,1)
-    m = size(BB,2)
-    dhat = zeros(T,n+m)
-    dhat[1:n] = sum(AA, dims=1) + sum(BB, dims=2)'
-    dhat[n+1:end] = sum(BB, dims=1) + sum(BB, dims=2)'*pinv(AA)*BB
-    dhat[dhat.<0] .= 0
-    return 1 ./ (sqrt.(dhat).+eps())
+    n = size(AA, 1)
+    m = size(BB, 2)
+    dhat = zeros(T, n + m)
+    dhat[1:n] = sum(AA, dims = 1) + sum(BB, dims = 2)'
+    dhat[n + 1:end] = sum(BB, dims = 1) + sum(BB, dims = 2)' * pinv(AA) * BB
+    dhat[dhat .< 0] .= 0
+    return 1 ./ (sqrt.(dhat) .+ eps())
 end
-function compute_V(AA::Matrix{T}, BB::Matrix{T}, nvec::Integer) where T<:Number
-    n = size(AA,1)
-    m = size(BB,2)
+function compute_V(AA::Matrix{T}, BB::Matrix{T}, nvec::Integer) where T <: Number
+    n = size(AA, 1)
+    m = size(BB, 2)
     Asi = real(sqrt(Symmetric(pinv(AA))))
-    F = svd(AA+((Asi*(BB*BB'))*Asi) )
-    V_1 = (Asi*F.U).*vec( (1 ./ (sqrt.(F.S).+ eps())))'
-    VA = AA*V_1[:,1:nvec+1]
-    VB = BB'*V_1[:,1:nvec+1]
-    return vcat(VA,VB)
+    F = svd(AA + ((Asi * (BB * BB')) * Asi))
+    V_1 = (Asi * F.U) .* vec((1 ./ (sqrt.(F.S) .+ eps())))'
+    VA = AA * V_1[:,1:nvec + 1]
+    VB = BB' * V_1[:,1:nvec + 1]
+    return vcat(VA, VB)
 end
 function normalize_A_and_B!(AA::Matrix, BB::Matrix)
-    n    = size(AA,1)
-    m    = size(BB,2)
-    dhat = compute_dhat(AA,BB)
-    vv   = view(dhat,1:n)
-    vb   = view(dhat,n .+ (1:m))
+    n    = size(AA, 1)
+    m    = size(BB, 2)
+    dhat = compute_dhat(AA, BB)
+    vv   = view(dhat, 1:n)
+    vb   = view(dhat, n .+ (1:m))
     for I in CartesianIndices(size(AA))
-        @inbounds AA[I] *= vv[I[1]]*vv[I[2]]
+        @inbounds AA[I] *= vv[I[1]] * vv[I[2]]
     end
     for I in CartesianIndices(size(BB))
-        @inbounds BB[I] *= vv[I[1]]*vb[I[2]]
+        @inbounds BB[I] *= vv[I[1]] * vb[I[2]]
     end
 end
 """
@@ -259,16 +269,16 @@ embedding(cfg::NystromMethod, A::Matrix, B::Matrix, landmarks::Vector{Int})
 Performs the eigenvector approximation given the two submatrices A and B.
 """
 function embedding(cfg::NystromMethod, AA::Matrix, BB::Matrix, landmarks::Vector{<:Integer})
-    n = size(AA,1)
-    m = size(BB,2)
-    normalize_A_and_B!(AA,BB)
-    V = compute_V(AA,BB, cfg.nvec)
-    indexes_b = setdiff(collect(1:(n+m)), landmarks)
-    indexes   = sortperm(vcat(landmarks,indexes_b))
-    for i = 2:cfg.nvec+1
-        V[:,i] = V[:,i] ./V[:,1]
+    n = size(AA, 1)
+    m = size(BB, 2)
+    normalize_A_and_B!(AA, BB)
+    V = compute_V(AA, BB, cfg.nvec)
+    indexes_b = setdiff(collect(1:(n + m)), landmarks)
+    indexes   = sortperm(vcat(landmarks, indexes_b))
+    for i = 2:cfg.nvec + 1
+        V[:,i] = V[:,i] ./ V[:,1]
     end
-    return V[indexes,2:cfg.nvec+1]
+    return V[indexes,2:cfg.nvec + 1]
 
 end
 """
@@ -278,63 +288,40 @@ type DNCuts
 # Multiscale Combinatorial Grouping for Image Segmentation and Object Proposal Generation
 ## Jordi Pont-Tuset, Pablo Arbeláez, Jonathan T. Barron, Member, Ferran Marques, Jitendra Malik
 """
-struct DNCuts
-  scales::Integer
-  nev::Integer
-  img_size
+struct DNCuts <: EigenvectorEmbedder
+    scales::Integer
+    nev::Integer
+    img_size
 end
 function pixel_decimate(img_size::Tuple{Int,Int}, L, steps)
-  (i,j) = ind2sub(img_size, 1:size(L,1))
-  return find((mod.(i,steps) .== 0) .& (mod.(j,steps) .==0))
+  CI = CartesianIndices(img_size)[1:size(L, 1)]
+  i = [ci[1] for ci in CI]
+  j = [ci[2] for ci in CI]
+  return findall((mod.(i, steps) .== 0) .& (mod.(j, steps) .== 0))
 end
 
-function svd_whiten(X)
-    U, s, Vt = svd(X)
-    return U*Vt
-end
-#=
-# get the column sums of A
-S = vec(sum(A,1))
+embedding(d::DNCuts, g::Graph) = embedding(d, adjacency_matrix(g))
 
-# get the nonzero entries in A. ei is row index, ej is col index, ev is the value in A
-ei,ej,ev = findnz(A)
-
-# get the number or rows and columns in A
-m,n = size(A)
-
-# create a new normalized matrix. For each nonzero index (ei,ej), its new value will be
-# the old value divided by the sum of that column, which can be obtained by S[ej]
-A_normalized = sparse(ei,ej,ev./S[ej],m,n)
-http://stackoverflow.com/questions/24296856/in-julia-how-can-i-column-normalize-a-sparse-matrix
-=#
-function normalize_columns(A::SparseMatrixCSC)
-    sums = sum(A,1)+ eps()
-    I,J,V = findnz(A)
-    for idx in 1:length(V)
-        V[idx] /= sums[J[idx]]
-    end
-    sparse(I,J,V)
-end
 """
 ```
 embedding(d::DNCuts, L)
 ```
 """
-function embedding(d::DNCuts, W)
+function embedding(d::DNCuts, W::AbstractMatrix)
    matrices = []
    img_size = d.img_size
-    for j=1:d.scales
-       idx = pixel_decimate(img_size,W,2)
-       B   = W[:,idx]
-       C   = normalize_columns(B')'
-        push!(matrices,C)
-        W = C'*B
-        img_size = (round(Int,img_size[1]/2), round(Int,img_size[2]/2))
+    for j = 1:d.scales
+       idx = pixel_decimate(img_size, W, 2)
+       B = W[:,idx]
+       C = normalize_cols(B')'
+       push!(matrices, C)
+       W = C' * B
+       img_size = (round(Int, img_size[1] / 2), round(Int, img_size[2] / 2))
     end
-   ss = ShiMalikLaplacian(d.nev)
-   V  = real(embedding(ss, NormalizedLaplacian(NormalizedAdjacency(CombinatorialAdjacency(W)))))
-    for s=d.scales:-1:1
-        V = matrices[s]*V
+    ss = ShiMalikLaplacian(d.nev)
+    V  = real(embedding(ss, NormalizedLaplacian(NormalizedAdjacency(CombinatorialAdjacency(W)))))
+    for s = d.scales:-1:1
+        V = matrices[s] * V
     end
     return svd_whiten(V)
 end
