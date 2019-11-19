@@ -1,7 +1,7 @@
 include(joinpath(dirname(@__FILE__),"deps.jl"))
 push!(LOAD_PATH, dirname(@__FILE__))
 using DocUtils
-using Extras
+
 makedocs(
      modules = [SpectralClustering],
     format = :html,

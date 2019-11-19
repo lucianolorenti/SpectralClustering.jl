@@ -169,10 +169,10 @@ function embedding(cfg::PartialGroupingConstraints, L::NormalizedAdjacency, rest
 """
 function embedding(cfg::PartialGroupingConstraints, L::NormalizedAdjacency, restrictions::Vector{Vector{Integer}})
     U = restriction_matrix(size(L, 1), restrictions)
-    (svd, n) = svds(spdiagm(prescalefactor(L)) * U, nsv = length(restrictions))
+    (svd, n) = svds(spdiagm(0=>prescalefactor(L)) * U, nsv = length(restrictions))
     (eigvals, eigvec) = LightGraphs.eigs(PGCMatrix(L, svd.Vt), nev = cfg.nev, which = LM())
     eigvec = real(eigvec)
-    return spdiagm(prescalefactor(L)) * eigvec
+    return spdiagm(0=>prescalefactor(L)) * eigvec
 end
 """
 ```

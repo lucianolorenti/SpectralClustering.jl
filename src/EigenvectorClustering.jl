@@ -93,7 +93,7 @@ Given a set of patterns `X` generates an eigenvector space according to `T<:Eige
 by `C<:EigenvectorClusterize`.
 
 """
-function clusterize(cfg::T, clus::C, X) where T<:EigenvectorEmbedder where C<:EigenvectorClusterizer
-    E = embedding(cfg,X)
+function clusterize(cfg::T, clus::C, X, params...) where T<:EigenvectorEmbedder where C<:EigenvectorClusterizer
+    E = embedding(cfg,X, params...)
     return clusterize(clus, E)
 end

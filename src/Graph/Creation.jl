@@ -227,18 +227,21 @@ They \"used a single value of \$K=7\$, which gave good results even for high-dim
 function local_scale(neighborhood::T, oracle::Function, X; k::Integer = 7, sortdim::Integer=1) where T<:VertexNeighborhood
     sort_data(d::AbstractArray; dims=1) = sort(d)
     sort_data(d::AbstractMatrix; dims=1) = sort(d, dims=dims)
+    temp = nothing
+    distance_function = nothing
     try
         temp = oracle(get_element(X, 1), get_element(X, [1, 2]))
-        oracle = (a,b,c,d)->oracle(c, d)
-    catch
+        distance_function = (a,b,c,d)->oracle(c, d)
+    catch e
         temp = oracle(0, [0], get_element(X, 1), get_element(X, [1, 2]))
+        distance_function = oracle
     end
     number_of_vertices = number_of_patterns(X)
 
     scales = zeros(size(temp, 2), number_of_vertices)
     for j = 1:number_of_vertices
         neigh = neighbors(neighborhood, j, X)
-        distances = oracle(j, neigh, get_element(X, j), get_element(X, neigh))
+        distances = distance_function(j, neigh, get_element(X, j), get_element(X, neigh))
 
         scales[:, j] .= sort_data(distances, dims=sortdim)[k, :]
     end

@@ -18,6 +18,15 @@ function two_gaussians(N::Integer = 500; std_1=5, std_2 = 5, center_1=[15,5], ce
     return (hcat(d1, d2), labels)
 end
 
+function three_gaussians(N::Integer = 250; )
+    d1 = (randn(2, N) * 1.5) .+ [5, 0]
+    d2 = (randn(2, N) * 1.5) .+ [0, 0]
+    d3 = (randn(2, N) * 1.5) .+ [-5, 0]
+    labels = round.(Integer, vcat(zeros(N), ones(N), ones(N)* 2))
+    return (hcat(d1, d2, d3), labels)
+end
+
+
 @testset "Graph Creation" begin
     @testset "KNNNeighborhood" begin
         function weight(i::Integer, neigh, v, m)
@@ -97,7 +106,7 @@ end;
         function weight(i::Integer, neigh, v, m)
             return exp.(-Distances.colwise(SqEuclidean(), m, v) / 15)
         end
-        (data, labels) = two_gaussians()
+        (data, labels) = three_gaussians()
         knnconfig = KNNNeighborhood(data, 7)
         graph = create(knnconfig, weight, data)
         emb = embedding(ShiMalikLaplacian(1), graph)
@@ -105,6 +114,22 @@ end;
         @test randindex(pred_clustering, labels)[4] > 0.9
     end
     @testset "PartialGroupingConstraints" begin
+        function weight(i::Integer, neigh, v, m)
+            return exp.(-Distances.colwise(SqEuclidean(), m, v) / 1)
+        end
+        (d, labels) = three_gaussians(25)
+        knnconfig = KNNNeighborhood(d, 15)
+        graph = create(knnconfig, weight, d)
+
+        constraints = Vector{Integer}[ [51, 52, 53, 59, 26, 27, 28, 35]];
+        clustering_1 = clusterize(PartialGroupingConstraints(2), KMeansClusterizer(2), graph, constraints)
+
+
+        constraints = Vector{Integer}[ [1, 2, 3, 26, 27, 28, 35]];
+        clustering_2 = clusterize(PartialGroupingConstraints(2), KMeansClusterizer(2), graph, constraints)
+
+        #cg_vec = SpectralClustering.normalize_rows(cg_vec)
+        plot([clustering_1.assignments, clustering_2.assignments])
 
     end
 end
@@ -256,7 +281,7 @@ end
         knnconfig = KNNNeighborhood(data, 7)
         graph_1 = create(knnconfig, weight_1, data);
         graph_2 = create(knnconfig, weight_2, data);
-        coreg = CoRegularizedMultiView([View(1, 0.001), 
+        coreg = CoRegularizedMultiView([View(1, 0.001),
                                         View(1, 0.001)])
         emb = embedding(coreg, [graph_1, graph_2])
         pred_clustering = convert(Array{Int64}, (emb[:, 1] .<= mean(emb[:, 1])))
