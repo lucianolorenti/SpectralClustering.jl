@@ -1,3 +1,4 @@
+using Pkg
 packages = ["Documenter","Formatting", "Images", "TestImages", 
 "RDatasets", "InfoZIP", "ImageView", "ImageMagick","Mustache", 
 "StringEncodings", "TextAnalysis", "Latexify", "IJulia"]
