@@ -20,7 +20,7 @@ end
 
 function three_gaussians(N::Integer = 250; )
     d1 = (randn(2, N) * 1.5) .+ [5, 0]
-    d2 = (randn(2, N) * 1.5) .+ [0, 0]
+    d2 = (randn(2, N) * 1) .+ [0, 0]
     d3 = (randn(2, N) * 1.5) .+ [-5, 0]
     labels = round.(Integer, vcat(zeros(N), ones(N), ones(N)* 2))
     return (hcat(d1, d2, d3), labels)
@@ -106,8 +106,8 @@ end;
         function weight(i::Integer, neigh, v, m)
             return exp.(-Distances.colwise(SqEuclidean(), m, v) / 15)
         end
-        (data, labels) = three_gaussians()
-        knnconfig = KNNNeighborhood(data, 7)
+        (data, labels) = two_gaussians()
+        knnconfig = KNNNeighborhood(data, 15)
         graph = create(knnconfig, weight, data)
         emb = embedding(ShiMalikLaplacian(1), graph)
         pred_clustering = convert(Array{Int64}, (emb .<= mean(emb)))
@@ -115,22 +115,32 @@ end;
     end
     @testset "PartialGroupingConstraints" begin
         function weight(i::Integer, neigh, v, m)
-            return exp.(-Distances.colwise(SqEuclidean(), m, v) / 1)
+            return exp.(-Distances.colwise(SqEuclidean(), m, v) / 0.7)
         end
-        (d, labels) = three_gaussians(25)
-        knnconfig = KNNNeighborhood(d, 15)
+        N = 150
+        (d, labels) = three_gaussians(N)
+        knnconfig = KNNNeighborhood(d, 100)
         graph = create(knnconfig, weight, d)
 
-        constraints = Vector{Integer}[ [51, 52, 53, 59, 26, 27, 28, 35]];
-        clustering_1 = clusterize(PartialGroupingConstraints(2), KMeansClusterizer(2), graph, constraints)
+        indices_clus_1 = [1, 2, 3, 4, 5]
+        indices_clus_2 = [N+1, N+2, N+3, N+4]
+        indices_clus_3 = [2*N+1, 2*N+2, 2*N+3, 2*N+4]
 
+        constraints = Vector{Integer}[ vcat(indices_clus_1, indices_clus_2) ] ;
+        emb_1 = embedding(PartialGroupingConstraints(1, smooth=true),  graph, constraints)
+        labels_1 = vcat(zeros(Integer, N*2), ones(Integer, N))
 
-        constraints = Vector{Integer}[ [1, 2, 3, 26, 27, 28, 35]];
-        clustering_2 = clusterize(PartialGroupingConstraints(2), KMeansClusterizer(2), graph, constraints)
+        constraints = Vector{Integer}[ vcat(indices_clus_2, indices_clus_3) ] 
+        emb_2 = embedding(PartialGroupingConstraints(1, smooth=true),  graph, constraints)
+        labels_2 = vcat(zeros(Integer, N), ones(Integer, N*2))
 
-        #cg_vec = SpectralClustering.normalize_rows(cg_vec)
-        plot([clustering_1.assignments, clustering_2.assignments])
+        pred_clustering = convert(Array{Int64}, (emb_1 .<= mean(emb_1)))
+        @test randindex(pred_clustering, labels_1)[4] > 0.85
+        @test randindex(pred_clustering, labels_2)[4] < 0.5
 
+        pred_clustering = convert(Array{Int64}, (emb_2 .<= mean(emb_2)))
+        @test randindex(pred_clustering, labels_2)[4] > 0.85
+        @test randindex(pred_clustering, labels_1)[4] < 0.5
     end
 end
 @testset "Clustering" begin
