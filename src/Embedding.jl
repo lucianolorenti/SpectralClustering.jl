@@ -8,6 +8,7 @@ using LightGraphs
 using LightGraphs.LinAlg
 using ArnoldiMethod
 using LinearAlgebra
+using Arpack
 abstract type AbstractEmbedding <: EigenvectorEmbedder
 end
 
@@ -188,11 +189,13 @@ function embedding(cfg::PartialGroupingConstraints, L::NormalizedAdjacency, rest
     if (cfg.smooth)
         U = sparse(L.A)' * U
     end
-    DU = Matrix(spdiagm(0=>prescalefactor(L)) * U)
-    H = inv(Matrix(DU'*DU))
-    (eigvals, eigvec) = LightGraphs.eigs(PGCMatrix(L, DU*H*DU'), nev = cfg.nev, which = LM())
+    DU = sparse(spdiagm(0=>prescalefactor(L)) * U)
+    F = svds(DU, nsv=size(U, 2)-1)[1]
+    AAt = sparse(F.U)*sparse(F.U)'
+    (eigvals, eigvec) = LightGraphs.eigs(PGCMatrix(L, AAt), nev = cfg.nev, which = LM())
     eigvec = real(eigvec)
     V = spdiagm(0=>prescalefactor(L)) * eigvec
+    println(size(V))
     if cfg.normalize
         return normalize_rows(V)
     else
