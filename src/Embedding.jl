@@ -195,7 +195,6 @@ function embedding(cfg::PartialGroupingConstraints, L::NormalizedAdjacency, rest
     (eigvals, eigvec) = LightGraphs.eigs(PGCMatrix(L, AAt), nev = cfg.nev, which = LM())
     eigvec = real(eigvec)
     V = spdiagm(0=>prescalefactor(L)) * eigvec
-    println(size(V))
     if cfg.normalize
         return normalize_rows(V)
     else
