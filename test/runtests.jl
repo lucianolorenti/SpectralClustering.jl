@@ -7,6 +7,7 @@ using Clustering
 using Images
 using Random
 using Distributions
+using ImageFiltering
 import LightGraphs.LinAlg: adjacency_matrix
 number_of_vertices = 5
 Random.seed!(0)
@@ -144,18 +145,21 @@ end;
         @test randindex(pred_clustering, labels_1)[4] < 0.5
     end
     @testset "YuShiPopout" begin
-        function weight(i::Integer, ineigh, vi, vneigh, pdf1, pdf2)
+        function weight(i::Integer, ineigh, vi, vneigh)
             intensity_dist = Distances.colwise(Euclidean(), vi[3:end], vneigh[3:end, :])
             xy_dist = Distances.colwise(Euclidean(), vi[1:2], vneigh[1:2, :])
-            return (pdf.(pdf1, intensity_dist) - pdf.(pdf2, intensity_dist))
+            a = 5
+            b = 0.05
+            return (pdf.(Normal(0, a*15), xy_dist) - pdf.(Normal(0, a), xy_dist)) .*
+                   (pdf.(Normal(0, b*100), intensity_dist) - pdf.(Normal(0, b), intensity_dist))
         end
-        function _attraction(i::Integer, ineigh, vi, vneigh, distance_pdf, intensity_pdf)
-            diff = weight(i, ineigh, vi, vneigh, distance_pdf, intensity_pdf)
+        function attraction(i::Integer, ineigh, vi, vneigh)
+            diff = weight(i, ineigh, vi, vneigh)
             diff[diff.<0] .= 0
             return diff
         end
-        function _repulsion(i::Integer, ineigh, vi, vneigh, distance_pdf, intensity_pdf)
-            diff = weight(i, ineigh, vi, vneigh, distance_pdf, intensity_pdf)
+        function repulsion(i::Integer, ineigh, vi, vneigh)
+            diff = weight(i, ineigh, vi, vneigh)
             diff[diff.>0] .= 0            
             return abs.(diff)
         end
@@ -165,18 +169,14 @@ end;
         img[8:25, 25:30] .= 0.6
         img = Gray.(img + randn(31, 31)*0.03)
 
-        pdf1 = Normal(0, 1.0)
-        pdf2 = Normal(0, 0.1)
-
-
-        attraction = (i, ni, v, nv) -> _attraction(i, ni, v, nv, pdf1, pdf2)
-        repulsion = (i, ni, v, nv) -> _repulsion(i, ni, v, nv, pdf1, pdf2)
-        nconfig = PixelNeighborhood(3)
+  
+        nconfig = PixelNeighborhood(4)
         graph_attraction = create(nconfig, attraction, img);
         graph_repulsion = create(nconfig, repulsion, img);
 
-        emb_config = YuShiPopout(3,false)
+        emb_config = YuShiPopout(3,  false)
         emb = embedding(emb_config, graph_attraction, graph_repulsion)
+
 
 
 
