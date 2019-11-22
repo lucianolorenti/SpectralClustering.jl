@@ -231,7 +231,10 @@ Stella X. Yu and Jianbo Shi
 
 struct YuShiPopout <: AbstractEmbedding
     nev::Integer
+    normalize::Bool
 end
+YuShiPopout(nev::Integer) = YuShiPopout(nev, true)
+
 """
 
 ```julia
@@ -262,18 +265,22 @@ function embedding(cfg::YuShiPopout,  grA::Graph, grR::Graph)
 function embedding(cfg::YuShiPopout, grA::Graph, grR::Graph)
     Wa = adjacency_matrix(grA)
     Wr = adjacency_matrix(grR)
-    dr = vec(sum(Wr, 1))
-    da = vec(sum(Wa, 1))
-    Weq = Wa - Wr + spdiagm(dr)
-    Deq = spdiagm(da + dr)
+    dr = vec(sum(Wr, dims=1))
+    da = vec(sum(Wa, dims=1))
+    Weq = Wa - Wr + spdiagm(0=>dr)
+    Deq = spdiagm(0=>da + dr)
     Wa = nothing
     da = nothing
     Wr = nothing
     dr = nothing
-    (eigvals, eigvec) = LightGraphs.eigs(Weq, Deq, nev = cfg.nev, tol = 0.000001,  which = LM())
-    indexes = sortperm(real(eigvals))
-    eigvec = real(eigvec[:,indexes])
-    return eigvec ./ mapslices(LinearAlgebra.norm, eigvec, dims = [2])
+    (eigvals, eigvec) = Arpack.eigs(Weq, Deq, nev = cfg.nev, tol = 0.000001,  which = :LM)
+    #indexes = sortperm(real(eigvals))
+    eigvec = real(eigvec)
+    if (cfg.normalize)
+        return SpectralClustering.normalize_rows(eigvec)
+    else
+        return eigvec
+    end
 end
 
 

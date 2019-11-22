@@ -6,6 +6,7 @@ using Statistics
 using Clustering
 using Images
 using Random
+using Distributions
 import LightGraphs.LinAlg: adjacency_matrix
 number_of_vertices = 5
 Random.seed!(0)
@@ -77,7 +78,7 @@ end
     end
     @testset "Local Sale Image" begin
         function weight(i::Integer, neigh, v, m)
-            col_dist = Distances.colwise(Euclidean(), m[2:end, :], v[2:end])
+            col_dist = Distances.colwise(Euclidean(), m[3:end, :], v[3:end])
             xy_dist = Distances.colwise(Euclidean(), m[1:2, :], v[1:2])
             return hcat(col_dist, xy_dist)
         end
@@ -141,6 +142,46 @@ end;
         pred_clustering = convert(Array{Int64}, (emb_2 .<= mean(emb_2)))
         @test randindex(pred_clustering, labels_2)[4] > 0.85
         @test randindex(pred_clustering, labels_1)[4] < 0.5
+    end
+    @testset "YuShiPopout" begin
+        function weight(i::Integer, ineigh, vi, vneigh, pdf1, pdf2)
+            intensity_dist = Distances.colwise(Euclidean(), vi[3:end], vneigh[3:end, :])
+            xy_dist = Distances.colwise(Euclidean(), vi[1:2], vneigh[1:2, :])
+            return ((pdf.(pdf1, xy_dist) - pdf.(pdf2, xy_dist)) .* 
+                    (pdf.(pdf1, intensity_dist) - pdf.(pdf2, intensity_dist)))
+        end
+        function _attraction(i::Integer, ineigh, vi, vneigh, distance_pdf, intensity_pdf)
+            diff = weight(i, ineigh, vi, vneigh, distance_pdf, intensity_pdf)
+            diff[diff.<0] .= 0
+            return diff
+        end
+        function _repulsion(i::Integer, ineigh, vi, vneigh, distance_pdf, intensity_pdf)
+            diff = weight(i, ineigh, vi, vneigh, distance_pdf, intensity_pdf)
+            diff[diff.>0] .= 0
+            diff .*= -1
+            return diff
+        end
+        img = zeros(31,31)
+        img[8:25, 3:12] .= 0.9
+        img[3:12, 5:28] .= 0.2
+        img[8:25, 25:30] .= 0.6
+        img = Gray.(img + randn(31, 31)*0.03)
+
+        pdf1 = Normal(0, 10)
+        pdf2 = Normal(0, 0.1)
+        
+        
+        attraction = (i, ni, v, nv) -> _attraction(i, ni, v, nv, pdf1, pdf2)
+        repulsion = (i, ni, v, nv) -> _repulsion(i, ni, v, nv, pdf1, pdf2)
+        nconfig = PixelNeighborhood(3)
+        graph_attraction = create(nconfig, attraction, img);
+        graph_repulsion = create(nconfig, repulsion, img);
+                       
+        emb_config = YuShiPopout(3,false)
+        emb = embedding(emb_config, graph_attraction, graph_repulsion)
+        emb = SpectralClustering.normalize_rows(emb)
+        
+
     end
 end
 @testset "Clustering" begin
