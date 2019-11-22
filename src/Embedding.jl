@@ -275,12 +275,12 @@ function embedding(cfg::YuShiPopout, grA::Graph, grR::Graph)
     dr = nothing
     (eigvals, eigvec) = Arpack.eigs(Weq, Deq, nev = cfg.nev, tol = 0.000001,  which = :LM)
     #indexes = sortperm(real(eigvals))
-    eigvec = real(eigvec)
-    if (cfg.normalize)
-        return SpectralClustering.normalize_rows(eigvec)
-    else
-        return eigvec
-    end
+    return eigvec
+    #if (cfg.normalize)
+    #    return SpectralClustering.normalize_rows(eigvec)
+    #else
+    #    return eigvec
+    #end
 end
 
 

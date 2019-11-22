@@ -131,7 +131,7 @@ end;
         emb_1 = embedding(PartialGroupingConstraints(1, smooth=true),  graph, constraints)
         labels_1 = vcat(zeros(Integer, N*2), ones(Integer, N))
 
-        constraints = Vector{Integer}[ vcat(indices_clus_2, indices_clus_3) ] 
+        constraints = Vector{Integer}[ vcat(indices_clus_2, indices_clus_3) ]
         emb_2 = embedding(PartialGroupingConstraints(1, smooth=true),  graph, constraints)
         labels_2 = vcat(zeros(Integer, N), ones(Integer, N*2))
 
@@ -147,8 +147,7 @@ end;
         function weight(i::Integer, ineigh, vi, vneigh, pdf1, pdf2)
             intensity_dist = Distances.colwise(Euclidean(), vi[3:end], vneigh[3:end, :])
             xy_dist = Distances.colwise(Euclidean(), vi[1:2], vneigh[1:2, :])
-            return ((pdf.(pdf1, xy_dist) - pdf.(pdf2, xy_dist)) .* 
-                    (pdf.(pdf1, intensity_dist) - pdf.(pdf2, intensity_dist)))
+            return (pdf.(pdf1, intensity_dist) - pdf.(pdf2, intensity_dist))
         end
         function _attraction(i::Integer, ineigh, vi, vneigh, distance_pdf, intensity_pdf)
             diff = weight(i, ineigh, vi, vneigh, distance_pdf, intensity_pdf)
@@ -157,9 +156,8 @@ end;
         end
         function _repulsion(i::Integer, ineigh, vi, vneigh, distance_pdf, intensity_pdf)
             diff = weight(i, ineigh, vi, vneigh, distance_pdf, intensity_pdf)
-            diff[diff.>0] .= 0
-            diff .*= -1
-            return diff
+            diff[diff.>0] .= 0            
+            return abs.(diff)
         end
         img = zeros(31,31)
         img[8:25, 3:12] .= 0.9
@@ -167,20 +165,20 @@ end;
         img[8:25, 25:30] .= 0.6
         img = Gray.(img + randn(31, 31)*0.03)
 
-        pdf1 = Normal(0, 10)
+        pdf1 = Normal(0, 1.0)
         pdf2 = Normal(0, 0.1)
-        
-        
+
+
         attraction = (i, ni, v, nv) -> _attraction(i, ni, v, nv, pdf1, pdf2)
         repulsion = (i, ni, v, nv) -> _repulsion(i, ni, v, nv, pdf1, pdf2)
         nconfig = PixelNeighborhood(3)
         graph_attraction = create(nconfig, attraction, img);
         graph_repulsion = create(nconfig, repulsion, img);
-                       
+
         emb_config = YuShiPopout(3,false)
         emb = embedding(emb_config, graph_attraction, graph_repulsion)
-        emb = SpectralClustering.normalize_rows(emb)
-        
+
+
 
     end
 end
