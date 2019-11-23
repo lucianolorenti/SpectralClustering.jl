@@ -7,7 +7,7 @@ using Clustering
 using Images
 using Random
 using Distributions
-using ImageFiltering
+
 import LightGraphs.LinAlg: adjacency_matrix
 number_of_vertices = 5
 Random.seed!(0)
@@ -160,7 +160,7 @@ end;
         end
         function repulsion(i::Integer, ineigh, vi, vneigh)
             diff = weight(i, ineigh, vi, vneigh)
-            diff[diff.>0] .= 0            
+            diff[diff.>0] .= 0
             return abs.(diff)
         end
         img = zeros(31,31)
@@ -169,17 +169,18 @@ end;
         img[8:25, 25:30] .= 0.6
         img = Gray.(img + randn(31, 31)*0.03)
 
-  
+        labels = zeros(Integer, 31, 31)
+        labels[8:25, 3:12] .= 1
+        labels[3:12, 5:28] .= 2
+        labels[8:25, 25:30] .= 3
+
         nconfig = PixelNeighborhood(4)
         graph_attraction = create(nconfig, attraction, img);
         graph_repulsion = create(nconfig, repulsion, img);
 
         emb_config = YuShiPopout(3,  false)
-        emb = embedding(emb_config, graph_attraction, graph_repulsion)
-
-
-
-
+        cluster_result = clusterize(emb_config, KMeansClusterizer(4), graph_attraction, graph_repulsion)
+        @test randindex(cluster_result.assignments[:], labels[:])[4] > 0.9
     end
 end
 @testset "Clustering" begin

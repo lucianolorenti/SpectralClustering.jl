@@ -1,16 +1,24 @@
 using LinearAlgebra,
       SparseArrays
 
-function normalize_matrix(A::AbstractMatrix, dim::Integer)
+function normalize_matrix(A::AbstractMatrix, dim::Integer; f=LinearAlgebra.norm)
     if (size(A, dim) == 1)
         return A
     end
-    return A./mapslices(LinearAlgebra.norm, A, dims=[dim])
+    return A./mapslices(f, A, dims=[dim])
 end
-normalize_rows(A::AbstractMatrix) = normalize_matrix(A, 2)
-normalize_cols(A::AbstractMatrix) = normalize_matrix(A, 1)
 
+normalize_rows(A::AbstractMatrix; f=LinearAlgebra.norm) = normalize_matrix(A, 2, f=f)
+normalize_cols(A::AbstractMatrix; f=LinearAlgebra.norm) = normalize_matrix(A, 1, f=f)
 
+function normalize_matrix!(A::AbstractMatrix, dim::Integer; f=LinearAlgebra.norm)
+    if (size(A, dim) == 1)
+        return A
+    end
+    A ./= mapslices(f, A, dims=[dim])
+end
+normalize_rows!(A::AbstractMatrix; f=LinearAlgebra.norm) = normalize_matrix!(A, 2, f=f)
+normalize_cols!(A::AbstractMatrix; f=LinearAlgebra.norm) = normalize_matrix!(A, 1, f=f)
 #=
 # get the column sums of A
 S = vec(sum(A,1))
