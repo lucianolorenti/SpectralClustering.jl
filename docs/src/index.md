@@ -27,8 +27,7 @@ as possible in a lower-dimensional representation.
 At the Julia REPL:
 
 ```julia
-using Pkg
-Pkg.add("https://github.com/lucianolorenti/SpectralClustering.jl.git")
+]add https://github.com/lucianolorenti/SpectralClustering.jl.git
 ```
 
 ## Description

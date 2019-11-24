@@ -1,13 +1,6 @@
 using Documenter
 using SpectralClustering
 
-deploydocs(
-    repo = "github.com/lucianolorenti/SpectralClustering.jl.git",
-    julia  = "1.2.0",
-    deps = nothing,
-    make = nothing,
-    target = "build"
-)
 
 
 
@@ -50,3 +43,11 @@ for file in readdir(joinpath(dirname(@__FILE__), "notebooks"))
         cp(full_path, joinpath(notebook_output_dir,file),  force=true)
     end
 end
+
+
+deploydocs(
+    repo = "github.com/lucianolorenti/SpectralClustering.jl.git",
+    deps = nothing,
+    make = nothing,
+    target = "build"
+)
