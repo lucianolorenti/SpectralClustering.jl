@@ -293,11 +293,10 @@ struct DNCuts <: EigenvectorEmbedder
     nev::Integer
     img_size
 end
-function pixel_decimate(img_size::Tuple{Int,Int}, L, steps)
-  CI = CartesianIndices(img_size)[1:size(L, 1)]
-  i = [ci[1] for ci in CI]
-  j = [ci[2] for ci in CI]
-  return findall((mod.(i, steps) .== 0) .& (mod.(j, steps) .== 0))
+function pixel_decimate(img_size::Tuple{Int,Int}, steps)
+    (nr, nc) = img_size
+    decimated = CartesianIndices(img_size)[1:steps:nr, 1:steps:nc]
+    return (LinearIndices(img_size)[decimated][:], size(decimated))
 end
 
 embedding(d::DNCuts, g::Graph) = embedding(d, adjacency_matrix(g))
@@ -308,18 +307,17 @@ embedding(d::DNCuts, L)
 ```
 """
 function embedding(d::DNCuts, W::AbstractMatrix)
-   matrices = []
-   img_size = d.img_size
+    matrices = []
+    img_size = d.img_size
     for j = 1:d.scales
-       idx = pixel_decimate(img_size, W, 2)
-       B = W[:,idx]
-       C = normalize_cols(B')'
-       push!(matrices, C)
-       W = C' * B
-       img_size = (round(Int, img_size[1] / 2), round(Int, img_size[2] / 2))
+        (idx, img_size) = pixel_decimate(img_size,  2)
+        B = W[:, idx]
+        C = Diagonal(vec(1 ./ sum(B, dims=2))) * B
+        push!(matrices, C)
+        W = C' * B
     end
     ss = ShiMalikLaplacian(d.nev)
-    V  = real(embedding(ss, NormalizedLaplacian(NormalizedAdjacency(CombinatorialAdjacency(W)))))
+    V  = Arpack.eigs(ss, NormalizedLaplacian(NormalizedAdjacency(CombinatorialAdjacency(W))))
     for s = d.scales:-1:1
         V = matrices[s] * V
     end

@@ -9,7 +9,7 @@ This library provides two methods two obtain the discrete solution:
 
 # Examples
 
-[Eigenvector clusterization examples](../../notebooks/Eigenvector Clustering.html )
+[Eigenvector clusterization examples](../../../notebooks/Eigenvector Clustering.html)
 
 # Reference Index
 ```@index
@@ -26,6 +26,6 @@ Pages=["EigenvectorClustering.jl"]
 # Bibliography
 ```@eval
 import Documenter.Documents.RawHTML
-using DocUtils
+Base.include(@__MODULE__, "DocUtils.jl")
 RawHTML(bibliography(["stella2003multiclass"]))
 ```

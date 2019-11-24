@@ -9,7 +9,7 @@ In order to build a simmilarity graph two elements have to be defined:
 
 
 # Examples
-[Graph creation examples](../../notebooks/Graph creation.html)
+[Graph creation examples](../../../notebooks/Graph creation.html)
 
 
 
@@ -17,7 +17,7 @@ In order to build a simmilarity graph two elements have to be defined:
 # Bibliography
 ```@eval
 import Documenter.Documents.RawHTML
-using DocUtils
+Base.include(@__MODULE__, "DocUtils.jl")
 RawHTML(bibliography(["Zelnik-manor04self-tuningspectral"]))
 ```
 # Reference

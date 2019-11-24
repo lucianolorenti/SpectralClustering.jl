@@ -6,6 +6,8 @@ using Statistics
 using Clustering
 using Images
 using Random
+using Distributions
+
 import LightGraphs.LinAlg: adjacency_matrix
 number_of_vertices = 5
 Random.seed!(0)
@@ -17,6 +19,15 @@ function two_gaussians(N::Integer = 500; std_1=5, std_2 = 5, center_1=[15,5], ce
     labels = round.(Integer, vcat(zeros(N), ones(N)))
     return (hcat(d1, d2), labels)
 end
+
+function three_gaussians(N::Integer = 250; )
+    d1 = (randn(2, N) * 1.5) .+ [5, 0]
+    d2 = (randn(2, N) * 1) .+ [0, 0]
+    d3 = (randn(2, N) * 1.5) .+ [-5, 0]
+    labels = round.(Integer, vcat(zeros(N), ones(N), ones(N)* 2))
+    return (hcat(d1, d2, d3), labels)
+end
+
 
 @testset "Graph Creation" begin
     @testset "KNNNeighborhood" begin
@@ -68,7 +79,7 @@ end
     end
     @testset "Local Sale Image" begin
         function weight(i::Integer, neigh, v, m)
-            col_dist = Distances.colwise(Euclidean(), m[2:end, :], v[2:end])
+            col_dist = Distances.colwise(Euclidean(), m[3:end, :], v[3:end])
             xy_dist = Distances.colwise(Euclidean(), m[1:2, :], v[1:2])
             return hcat(col_dist, xy_dist)
         end
@@ -98,14 +109,78 @@ end;
             return exp.(-Distances.colwise(SqEuclidean(), m, v) / 15)
         end
         (data, labels) = two_gaussians()
-        knnconfig = KNNNeighborhood(data, 7)
+        knnconfig = KNNNeighborhood(data, 15)
         graph = create(knnconfig, weight, data)
         emb = embedding(ShiMalikLaplacian(1), graph)
         pred_clustering = convert(Array{Int64}, (emb .<= mean(emb)))
         @test randindex(pred_clustering, labels)[4] > 0.9
     end
     @testset "PartialGroupingConstraints" begin
+        function weight(i::Integer, neigh, v, m)
+            return exp.(-Distances.colwise(SqEuclidean(), m, v) / 0.7)
+        end
+        N = 150
+        (d, labels) = three_gaussians(N)
+        knnconfig = KNNNeighborhood(d, 100)
+        graph = create(knnconfig, weight, d)
 
+        indices_clus_1 = [1, 2, 3, 4, 5]
+        indices_clus_2 = [N+1, N+2, N+3, N+4]
+        indices_clus_3 = [2*N+1, 2*N+2, 2*N+3, 2*N+4]
+
+        constraints = Vector{Integer}[ vcat(indices_clus_1, indices_clus_2) ] ;
+        emb_1 = embedding(PartialGroupingConstraints(1, smooth=true),  graph, constraints)
+        labels_1 = vcat(zeros(Integer, N*2), ones(Integer, N))
+
+        constraints = Vector{Integer}[ vcat(indices_clus_2, indices_clus_3) ]
+        emb_2 = embedding(PartialGroupingConstraints(1, smooth=true),  graph, constraints)
+        labels_2 = vcat(zeros(Integer, N), ones(Integer, N*2))
+
+        pred_clustering = convert(Array{Int64}, (emb_1 .<= mean(emb_1)))
+        @test randindex(pred_clustering, labels_1)[4] > 0.85
+        @test randindex(pred_clustering, labels_2)[4] < 0.5
+
+        pred_clustering = convert(Array{Int64}, (emb_2 .<= mean(emb_2)))
+        @test randindex(pred_clustering, labels_2)[4] > 0.85
+        @test randindex(pred_clustering, labels_1)[4] < 0.5
+    end
+    @testset "YuShiPopout" begin
+        function weight(i::Integer, ineigh, vi, vneigh)
+            intensity_dist = Distances.colwise(Euclidean(), vi[3:end], vneigh[3:end, :])
+            xy_dist = Distances.colwise(Euclidean(), vi[1:2], vneigh[1:2, :])
+            a = 5
+            b = 0.05
+            return (pdf.(Normal(0, a*15), xy_dist) - pdf.(Normal(0, a), xy_dist)) .*
+                   (pdf.(Normal(0, b*100), intensity_dist) - pdf.(Normal(0, b), intensity_dist))
+        end
+        function attraction(i::Integer, ineigh, vi, vneigh)
+            diff = weight(i, ineigh, vi, vneigh)
+            diff[diff.<0] .= 0
+            return diff
+        end
+        function repulsion(i::Integer, ineigh, vi, vneigh)
+            diff = weight(i, ineigh, vi, vneigh)
+            diff[diff.>0] .= 0
+            return abs.(diff)
+        end
+        img = zeros(31,31)
+        img[8:25, 3:12] .= 0.9
+        img[3:12, 5:28] .= 0.2
+        img[8:25, 25:30] .= 0.6
+        img = Gray.(img + randn(31, 31)*0.03)
+
+        labels = zeros(Integer, 31, 31)
+        labels[8:25, 3:12] .= 1
+        labels[3:12, 5:28] .= 2
+        labels[8:25, 25:30] .= 3
+
+        nconfig = PixelNeighborhood(4)
+        graph_attraction = create(nconfig, attraction, img);
+        graph_repulsion = create(nconfig, repulsion, img);
+
+        emb_config = YuShiPopout(3,  false)
+        cluster_result = clusterize(emb_config, KMeansClusterizer(4), graph_attraction, graph_repulsion)
+        @test randindex(cluster_result.assignments[:], labels[:])[4] > 0.9
     end
 end
 @testset "Clustering" begin
@@ -256,7 +331,7 @@ end
         knnconfig = KNNNeighborhood(data, 7)
         graph_1 = create(knnconfig, weight_1, data);
         graph_2 = create(knnconfig, weight_2, data);
-        coreg = CoRegularizedMultiView([View(1, 0.001), 
+        coreg = CoRegularizedMultiView([View(1, 0.001),
                                         View(1, 0.001)])
         emb = embedding(coreg, [graph_1, graph_2])
         pred_clustering = convert(Array{Int64}, (emb[:, 1] .<= mean(emb[:, 1])))

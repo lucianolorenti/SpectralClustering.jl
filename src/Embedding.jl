@@ -8,6 +8,7 @@ using LightGraphs
 using LightGraphs.LinAlg
 using ArnoldiMethod
 using LinearAlgebra
+using Arpack
 abstract type AbstractEmbedding <: EigenvectorEmbedder
 end
 
@@ -106,12 +107,20 @@ struct PartialGroupingConstraints <: AbstractEmbedding
 # Members
 
 - `nev::Integer`. The number of eigenvector to obtain.
+- `smooth::Bool`. Whether to user Smooth Constraints
+- `normalize::Bool`. Whether to normalize the rows of the obtained vectors
 
 Segmentation Given Partial Grouping Constraints
 Stella X. Yu and Jianbo Shi
 """
 struct PartialGroupingConstraints <: AbstractEmbedding
     nev::Integer
+    smooth::Bool
+    normalize::Bool
+end
+
+function PartialGroupingConstraints(nev::Integer; smooth::Bool=true, normalize::Bool=false)
+    return PartialGroupingConstraints(nev, smooth, normalize)
 end
 
 """
@@ -123,9 +132,9 @@ Partial grouping constraint structure. This sturct is passed to eigs to
 performe the L*x computation according to (41), (42) and (43) of
 ""Segmentation Given Partial Grouping Constraints""
 """
-struct PGCMatrix{T,F} <: AbstractMatrix{T}
+struct PGCMatrix{T} <: AbstractMatrix{T}
     W::NormalizedAdjacency{T}
-    At::Matrix{F}
+    At
 end
 import Base.size
 import LinearAlgebra.issymmetric
@@ -138,24 +147,32 @@ function issymmetric(a::PGCMatrix)
     return true
 end
 function mul!(dest::AbstractVector, a::PGCMatrix, x::AbstractVector)
-    z = x - a.At' * (a.At * x)
+    z = x - (a.At * x)
     y = a.W * z
-    dest[:] = y - a.At' * (a.At * y)
+    dest[:] = y - (a.At* y)
 end
 
 function restriction_matrix(nv::Integer,  restrictions::Vector{Vector{Integer}})
-    number_of_restrictions = length(restrictions)
-    U = spzeros(nv, nv)
+    I = Integer[]
+    J = Integer[]
+    V = Float64[]
     k = 0
-    for j = 1:number_of_restrictions
+    for j = 1:length(restrictions)
         U_t = restrictions[j]
-        for s = 1:length(U_t) - 1
-            k = k + 1
-            U[U_t[s],k] = 1
-            U[U_t[s + 1],k] = 1
+        for i=1:length(U_t)-1
+            elem_i = U_t[i]
+            elem_j = U_t[i+1]
+            k += 1
+            push!(I, elem_i)
+            push!(J, k)
+            push!(V, 1.0)
+
+            push!(I, elem_j)
+            push!(J, k)
+            push!(V, -1.0)
         end
     end
-    return U
+    return sparse(I, J, V, nv, k)
 end
 """
 ```
@@ -168,11 +185,21 @@ function embedding(cfg::PartialGroupingConstraints, L::NormalizedAdjacency, rest
 - `restrictions::Vector{Vector{Integer}}`
 """
 function embedding(cfg::PartialGroupingConstraints, L::NormalizedAdjacency, restrictions::Vector{Vector{Integer}})
-    U = restriction_matrix(size(L, 1), restrictions)
-    (svd, n) = svds(spdiagm(prescalefactor(L)) * U, nsv = length(restrictions))
-    (eigvals, eigvec) = LightGraphs.eigs(PGCMatrix(L, svd.Vt), nev = cfg.nev, which = LM())
+    U = restriction_matrix(size(L, 1), restrictions) 
+    if (cfg.smooth)
+        U = sparse(L.A)' * U
+    end
+    DU = sparse(spdiagm(0=>prescalefactor(L)) * U)
+    F = svds(DU, nsv=size(U, 2)-1)[1]
+    AAt = sparse(F.U)*sparse(F.U)'
+    (eigvals, eigvec) = LightGraphs.eigs(PGCMatrix(L, AAt), nev = cfg.nev, which = LM())
     eigvec = real(eigvec)
-    return spdiagm(prescalefactor(L)) * eigvec
+    V = spdiagm(0=>prescalefactor(L)) * eigvec
+    if cfg.normalize
+        return normalize_rows(V)
+    else
+        return V
+    end
 end
 """
 ```
@@ -204,7 +231,10 @@ Stella X. Yu and Jianbo Shi
 
 struct YuShiPopout <: AbstractEmbedding
     nev::Integer
+    normalize::Bool
 end
+YuShiPopout(nev::Integer) = YuShiPopout(nev, true)
+
 """
 
 ```julia
@@ -235,18 +265,22 @@ function embedding(cfg::YuShiPopout,  grA::Graph, grR::Graph)
 function embedding(cfg::YuShiPopout, grA::Graph, grR::Graph)
     Wa = adjacency_matrix(grA)
     Wr = adjacency_matrix(grR)
-    dr = vec(sum(Wr, 1))
-    da = vec(sum(Wa, 1))
-    Weq = Wa - Wr + spdiagm(dr)
-    Deq = spdiagm(da + dr)
+    dr = vec(sum(Wr, dims=1))
+    da = vec(sum(Wa, dims=1))
+    Weq = Wa - Wr + spdiagm(0=>dr)
+    Deq = spdiagm(0=>da + dr)
     Wa = nothing
     da = nothing
     Wr = nothing
     dr = nothing
-    (eigvals, eigvec) = LightGraphs.eigs(Weq, Deq, nev = cfg.nev, tol = 0.000001,  which = LM())
-    indexes = sortperm(real(eigvals))
-    eigvec = real(eigvec[:,indexes])
-    return eigvec ./ mapslices(LinearAlgebra.norm, eigvec, dims = [2])
+    (eigvals, eigvec) = Arpack.eigs(Weq, Deq, nev = cfg.nev, tol = 0.000001,  which = :LM)
+    #indexes = sortperm(real(eigvals))
+    return eigvec
+    #if (cfg.normalize)
+    #    return SpectralClustering.normalize_rows(eigvec)
+    #else
+    #    return eigvec
+    #end
 end
 
 

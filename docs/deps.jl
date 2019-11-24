@@ -16,7 +16,7 @@ using SpectralClustering
 try
    Pkg.installed("BibTeX")
 catch
-    Pkg.clone("https://github.com/bramtayl/BibTeX.jl.git")
+    Pkg.clone("https://github.com/JuliaTeX/BibTeX.jl.git")
 end
 try
     Pkg.installed("BibTeXFormat")

@@ -3,11 +3,11 @@ Given a symmetric affinity matrix \$A\$, we would like to compute the \$k\$ smal
 
 # Examples
 
-[Approximate embedding examples](../../notebooks/Approximate Embedding.html )
+[Approximate embedding examples](../../../notebooks/Approximate Embedding.html )
 # Bibliography
 ```@eval
 import Documenter.Documents.RawHTML
-using DocUtils
+Base.include(@__MODULE__, "DocUtils.jl")
 RawHTML(bibliography(["pont2017multiscale"]))
 ```
 # Reference
