@@ -6,7 +6,7 @@ from the eigenvectors of each view.
 
 # Examples
 
-[MultiView Embedding examples](../../notebooks/Multiview Embedding.html  )
+[MultiView Embedding examples](../../../notebooks/Multiview Embedding.html  )
 # Reference Index
 ```@index
 Modules = [SpectralClustering]

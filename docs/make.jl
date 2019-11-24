@@ -1,12 +1,22 @@
-include(joinpath(dirname(@__FILE__),"deps.jl"))
-push!(LOAD_PATH, dirname(@__FILE__))
-using DocUtils
+using Documenter
+using SpectralClustering
+
+deploydocs(
+    repo = "github.com/lucianolorenti/SpectralClustering.jl.git",
+    julia  = "1.2.0",
+    deps = nothing,
+    make = nothing,
+    target = "build"
+)
+
+
 
 makedocs(
-     modules = [SpectralClustering],
-    format = :html,
+    modules = [SpectralClustering],
+    format = Documenter.HTML(prettyurls = true),
     source = "src",
-    assets = [ "assets/css/custom.css", "assets/js/mathjaxhelper.js"],
+    clean = false,
+    
     sitename = "SpectralClustering.jl",
     pages = Any[
         "Home" => "index.md",
@@ -29,19 +39,14 @@ makedocs(
 
 )
 notebook_output_dir =   joinpath(dirname(@__FILE__), "build","notebooks")
+mkpath(notebook_output_dir)
 using IJulia
+jupyter_path = first(IJulia.find_jupyter_subcommand("nbconvert"))
 for file in readdir(joinpath(dirname(@__FILE__), "notebooks"))
    full_path = joinpath(dirname(@__FILE__), "notebooks", file)
     if (endswith(file,".ipynb"))
-	run(`$(IJulia.jupyter) nbconvert --template=nbextensions --to html $full_path --output-dir=$notebook_output_dir`)
-    else
-        cp(full_path, joinpath(notebook_output_dir,file))
+	    run(`$(jupyter_path) nbconvert --to html $full_path --output-dir=$notebook_output_dir`)
+    elseif (file != ".ipynb_checkpoints")
+        cp(full_path, joinpath(notebook_output_dir,file),  force=true)
     end
 end
-deploydocs(
-    repo = "github.com/lucianolorenti/SpectralClustering.jl.git",
-    julia  = "0.6",
-    deps = nothing,
-    make = nothing,
-    target = "build"
-)

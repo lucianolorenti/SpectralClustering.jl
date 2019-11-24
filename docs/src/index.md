@@ -37,7 +37,7 @@ The library provides functions that allow:
 * Build the affinity matrix. [Simmilarity graph creation](@ref), [Graph matrices](ref)
 * Perform the embedding of the patterns in the space spanned by the eigenvectors of the matrices derived from the affinity matrix. [Eigenvector Embedding](@ref)
     * Obtain an approximation of the eigenvector in order to reduce the computational complexity. [Approximate embedding](@ref)
-    * Exploiting information from multiple views. Corresponding nodes in each graph should have the same cluster membership. [MultiView embedding](@ref)
+    * Exploiting information from multiple views. Corresponding nodes in each graph should have the same cluster membership. [MultiView Embedding](@ref)
 * Clusterize the eigenvector space. [Eigenvector Clustering](@ref)
 
 
@@ -45,6 +45,8 @@ The library provides functions that allow:
 # Bibliography
 ```@eval
 import Documenter.Documents.RawHTML
-using DocUtils
+
+Base.include(@__MODULE__, "DocUtils.jl")
+
 RawHTML(bibliography(["ng2002spectral","shi2000normalized","yu2001understanding"]))
 ```

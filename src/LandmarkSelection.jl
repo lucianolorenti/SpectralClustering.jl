@@ -38,7 +38,7 @@ end
 ```julia
 select_landmarks(c::RandomLandmarkSelection,d::T,n::Integer, X)
 ```
-The function returns `n`random points according to [`RandomLandmarkSelection`](@ref)
+The function returns `n`random points according to `RandomLandmarkSelection`
 # Arguments
 - c::RandomLandmarkSelection.
 - n::Integer. The number of data points to sample.

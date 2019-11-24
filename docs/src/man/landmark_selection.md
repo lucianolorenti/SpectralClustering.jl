@@ -9,12 +9,12 @@ Methods availaible:
 ## Detailed Description
 
 ### Random Landmark Selection
-```@example RandomLandmarkSelection
+```@example
 using SpectralClustering
-number_of_points    = 20
-dimension           = 5
-data                = rand(dimension,number_of_points)
-selector            = RandomLandmarkSelection()
+number_of_points = 20
+dimension = 5
+data = rand(dimension,number_of_points)
+selector = RandomLandmarkSelection()
 number_of_landmarks = 7
 select_landmarks(selector, number_of_landmarks, data )
 ```
@@ -22,10 +22,10 @@ select_landmarks(selector, number_of_landmarks, data )
 
 ```@example
 using SpectralClustering
-number_of_points    = 20
-dimension           = 5
-data                = rand(dimension,number_of_points)
-selector            = EvenlySpacedLandmarkSelection()
+number_of_points = 20
+dimension = 5
+data = rand(dimension,number_of_points)
+selector = EvenlySpacedLandmarkSelection()
 number_of_landmarks = 5
 select_landmarks(selector, number_of_landmarks, data )
 
@@ -41,6 +41,4 @@ Pages=["man/landmark_selection.md"]
 Modules=[SpectralClustering]
 Pages=["src/LandmarkSelection.jl"]
 ```
-```@bibliography
 
-```
