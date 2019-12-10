@@ -1,7 +1,7 @@
 name = "SpectralClustering"
 uuid = "a9453432-0461-11e9-1276-9b1ac3d3d0c6"
 authors = ["lucianolorenti <lucianolorenti@gmail.com>"]
-version = "0.1.0"
+version = "0.1.1"
 
 [deps]
 ArnoldiMethod = "ec485272-7323-5ecc-a04f-4719b315124d"
