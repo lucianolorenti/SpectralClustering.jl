@@ -323,3 +323,22 @@ function embedding(d::DNCuts, W::AbstractMatrix)
     end
     return svd_whiten(V)
 end
+
+
+
+struct FastMultiscale
+end
+function quad_tree(img::Matrix{T}, split_criteria::Function) where T <: Colorant
+    (nr, nc) = size(img)
+    halfr = nr // 2 
+    halfc = nc // 2
+    quad_1 = img[1:halfr, 1:halfc] 
+    quad_2 = img[halfr+1:end, 1:halfc]
+    quad_3 = img[1:halfr, halfc+1:end]
+    quad_4 = img[halfr+1:end, halfc+1:end]
+
+
+end
+function embedding(d::FastMultiscale, img::Matrix{T}) where T <: Colorant
+
+end
