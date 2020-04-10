@@ -306,7 +306,7 @@ embedding(d::DNCuts, g::Graph) = embedding(d, adjacency_matrix(g))
 embedding(d::DNCuts, L)
 ```
 """
-function embedding(d::DNCuts, W::AbstractMatrix)
+function embedding(d::DNCuts, W::AbstractMatrix{T}) where T<:Number
     matrices = []
     img_size = d.img_size
     for j = 1:d.scales
@@ -317,7 +317,7 @@ function embedding(d::DNCuts, W::AbstractMatrix)
         W = C' * B
     end
     ss = ShiMalikLaplacian(d.nev)
-    V  = Arpack.eigs(ss, NormalizedLaplacian(NormalizedAdjacency(CombinatorialAdjacency(W))))
+    V  = embedding(ss, NormalizedLaplacian(NormalizedAdjacency(CombinatorialAdjacency(W))))
     for s = d.scales:-1:1
         V = matrices[s] * V
     end
