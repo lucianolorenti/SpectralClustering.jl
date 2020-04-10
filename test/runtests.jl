@@ -273,7 +273,7 @@ end
             for (i, val) in enumerate(unique(emb))
                 clusters[findall(emb.==val)] .= i -1
             end
-            @test clusters == labels
+            @test randindex(clusters, labels)[4] > 0.95
         end
     end
     @testset "DNCuts" begin
