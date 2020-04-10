@@ -2,6 +2,7 @@
 
 - [Documentation](https://lucianolorenti.github.io/SpectralClustering.jl/latest)
 - Check out the [Examples](https://lucianolorenti.github.io/SpectralClustering.jl/latest/notebooks/Index.html)
+[![Coverage Status](https://coveralls.io/repos/github/lucianolorenti/SpectralClustering.jl/badge.svg?branch=master)](https://coveralls.io/github/lucianolorenti/SpectralClustering.jl?branch=master)
 
 The library provides functions that allow:
 * Build the affinity matrix.
