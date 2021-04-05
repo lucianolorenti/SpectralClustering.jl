@@ -33,7 +33,7 @@ with Landmark-Based Representation](http://citeseerx.ist.psu.edu/viewdoc/downloa
 * Incremental
   * TODO [Incremental spectral clustering by efficiently updating the eigen-system](https://www.sciencedirect.com/science/article/pii/S0031320309002209/pdfft?md5=dc50ecba5ab9ab23ea239ef89244800a&pid=1-s2.0-S0031320309002209-main.pdf)
 * Clusterize
-  * [Multiclass Spectral Clustering](http://www.public.asu.edu/~jye02/CLASSES/Spring-2007/Papers/PAPERS/295_yu_s.pdf)
+  * [Multiclass Spectral Clustering](https://www1.icsi.berkeley.edu/~stellayu/publication/doc/2003kwayICCV.pdf)
   * KMeans via [Clustering.jl](https://github.com/JuliaStats/Clustering.jl)
 
 The documentation and the library is still a work in progress.
