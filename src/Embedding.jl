@@ -208,7 +208,7 @@ function embedding(cfg::PartialGroupingConstraints, L::NormalizedAdjacency, rest
 - `restrictions::Vector{Vector{Integer}}`
 """
 function embedding(cfg::PartialGroupingConstraints, L::NormalizedAdjacency, restrictions::Vector{Vector{Integer}})
-    U = restriction_matrix(size(L, 1), restrictions) 
+    U = restriction_matrix(size(L, 1), restrictions)
     if (cfg.smooth)
         U = sparse(L.A)' * U
     end
@@ -298,7 +298,7 @@ function embedding(cfg::YuShiPopout, grA::Graph, grR::Graph)
     dr = nothing
     (eigvals, eigvec) = Arpack.eigs(Weq, Deq, nev = cfg.nev, tol = 0.000001,  which = :LM)
     #indexes = sortperm(real(eigvals))
-    return eigvec
+    return real(eigvec)
     #if (cfg.normalize)
     #    return SpectralClustering.normalize_rows(eigvec)
     #else
