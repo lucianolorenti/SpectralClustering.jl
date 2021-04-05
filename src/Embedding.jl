@@ -58,6 +58,9 @@ Performs the eigendecomposition of the laplacian matrix of the weight matrix `` 
 """
 embedding(cfg::NgLaplacian, L::NormalizedAdjacency) = embedding(cfg, sparse(L))
 
+
+
+
 """
 ```julia
 embedding(cfg::NgLaplacian, L::SparseMatrixCSC)
@@ -65,10 +68,30 @@ embedding(cfg::NgLaplacian, L::SparseMatrixCSC)
 Performs the eigendecomposition of the laplacian matrix of the weight matrix `` W `` defined according to [`NgLaplacian`](@ref)
 """
 function embedding(cfg::NgLaplacian, L::AbstractMatrix)
-    (vals, vec) = LightGraphs.eigs(L, nev = cfg.nev + 5, which = LM(), restarts=5000)
-    vec = real(vec)
-    a = (.!(isapprox.(vals, 1)))
-    vec  = vec[:, a]
+    function handle_repeated_eigenvalues(vals, vec)
+        current = [1]
+        for j = 1:length(vals)-1
+            if vals[j] - vals[j+1] < 1e-10
+                push!(current, j+1)
+            else
+                if length(current) > 1
+                    vec[:, current] = orth(vec[:, current])
+                end
+                current = [j]
+            end
+        end
+        if length(current) > 1
+            vec[:, current] = orth(vec[:, current])
+        end
+        return vec
+    end
+    (vals, vec) = LightGraphs.eigs(L,
+                                   nev = cfg.nev,
+                                   which = LM(),
+                                   tol=1e-30,
+                                   restarts=500000)
+
+    vec = handle_repeated_eigenvalues(vals, vec)
     vec = vec[:, 1:cfg.nev]
     if cfg.normalize
         return normalize_rows(vec)
