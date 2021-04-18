@@ -334,7 +334,11 @@ the cfg.nev eigenvectors associated with the non-zero smallest
 eigenvalues.
 """
 function embedding(cfg::ShiMalikLaplacian, L::NormalizedLaplacian)
-    (vals, V) = LightGraphs.eigs(sparse(L), nev=min(cfg.nev + 10, size(L, 1)), which = SR(), restarts=5000)
+    (vals, V) = LightGraphs.eigs(sparse(L),
+                                 nev=min(cfg.nev + 10, size(L, 1)),
+                                 which = SR(),
+                                 tol=1e-20,
+                                 restarts=5000)
     idxs = findall(real(vals) .> 0.0000001)
     idxs = idxs[1:min(length(idxs), cfg.nev)]
     V = spdiagm(0 => L.A.A.D.^(1 / 2)) * real(V[:,idxs])

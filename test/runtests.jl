@@ -117,8 +117,8 @@ end
         (data, labels) = two_gaussians()
         knnconfig = KNNNeighborhood(data, 15)
         graph = create(knnconfig, weight, data)
-        emb = embedding(ShiMalikLaplacian(1), graph)
-        pred_clustering = convert(Array{Int64}, (emb .<= mean(emb)))
+        emb = embedding(ShiMalikLaplacian(8), graph)
+        pred_clustering = convert(Array{Int64}, (emb[:, 1] .<= mean(emb[:, 1])))
         @test randindex(pred_clustering, labels)[4] > 0.9
 
 
@@ -127,20 +127,23 @@ end
                                     NormalizedAdjacency(
                                         CombinatorialAdjacency(
                                             adjacency_matrix(graph, dir=:both))))
-        ca = CombinatorialAdjacency(adjacency_matrix(graph, dir=:both))
-        laplacian = spdiagm(0 => ca.D) - ca.A
-        (vals, V) = LightGraphs.eigs(sparse(laplacian),
-                                    nev=min(5 + 10, size(laplacian, 1)),
+        (vals, V) = LightGraphs.eigs(sparse(normalized_laplacian),
+                                    nev=min(5 + 10, size(normalized_laplacian, 1)),
                                     which=SR(),
+                                    tol=1e-20,
                                     restarts=5000)
-
+        emb = embedding(ShiMalikLaplacian(8, false), graph)
         recovered_eigenvectors = spdiagm(0 => normalized_laplacian.A.A.D.^(-1 / 2)) * V
 
-        # Original eigenvalue problem.  Equation (6)
-        e1 = laplacian * recovered_eigenvectors
-        e2 = (spdiagm(0 => normalized_laplacian.A.A.D) * recovered_eigenvectors) .* vals'
+        ca = CombinatorialAdjacency(adjacency_matrix(graph, dir=:both))
+        laplacian = spdiagm(0 => ca.D) - ca.A
 
-        @test mean(e1 - e2) < 1e-8
+        for j=1:size(emb, 2)
+            a1 = ((laplacian*recovered_eigenvectors[:, j+1])./(spdiagm(0 => ca.D) *recovered_eigenvectors[:,j+1]))[1]
+            a2 = ((laplacian*emb[:, j])./(spdiagm(0 => ca.D) *emb[:,j]))[1] 
+            @test (a1-a2) < 1e-10
+        end
+
     end
     @testset "PartialGroupingConstraints" begin
         function weight(i::Integer, neigh, v, m)
