@@ -27,12 +27,13 @@ end
 struct KMeansClusterizer <: EigenvectorClusterizer
     k::Integer
     init::Symbol
+    maxiter::Integer
 end
 function KMeansClusterizer(k::Integer)
-    return KMeansClusterizer(k, :kmpp)
+    return KMeansClusterizer(k, :kmpp, 50000)
 end
 function clusterize(t::KMeansClusterizer, E)
-    model = kmeans(Matrix(E'), t.k, init =t.init)
+    model = kmeans(Matrix(E'), t.k, init =t.init, maxiter=t.maxiter)
 
     return EigenvectorClusteringResult(assignments(model))
 end

@@ -58,6 +58,9 @@ Performs the eigendecomposition of the laplacian matrix of the weight matrix `` 
 """
 embedding(cfg::NgLaplacian, L::NormalizedAdjacency) = embedding(cfg, sparse(L))
 
+
+
+
 """
 ```julia
 embedding(cfg::NgLaplacian, L::SparseMatrixCSC)
@@ -65,10 +68,30 @@ embedding(cfg::NgLaplacian, L::SparseMatrixCSC)
 Performs the eigendecomposition of the laplacian matrix of the weight matrix `` W `` defined according to [`NgLaplacian`](@ref)
 """
 function embedding(cfg::NgLaplacian, L::AbstractMatrix)
-    (vals, vec) = LightGraphs.eigs(L, nev = cfg.nev + 5, which = LM(), restarts=5000)
-    vec = real(vec)
-    a = (.!(isapprox.(vals, 1)))
-    vec  = vec[:, a]
+    function handle_repeated_eigenvalues(vals, vec)
+        current = [1]
+        for j = 1:length(vals)-1
+            if vals[j] - vals[j+1] < 1e-10
+                push!(current, j+1)
+            else
+                if length(current) > 1
+                    vec[:, current] = orth(vec[:, current])
+                end
+                current = [j]
+            end
+        end
+        if length(current) > 1
+            vec[:, current] = orth(vec[:, current])
+        end
+        return vec
+    end
+    (vals, vec) = LightGraphs.eigs(L,
+                                   nev = cfg.nev,
+                                   which = LM(),
+                                   tol=1e-30,
+                                   restarts=500000)
+
+    vec = handle_repeated_eigenvalues(vals, vec)
     vec = vec[:, 1:cfg.nev]
     if cfg.normalize
         return normalize_rows(vec)
@@ -185,7 +208,7 @@ function embedding(cfg::PartialGroupingConstraints, L::NormalizedAdjacency, rest
 - `restrictions::Vector{Vector{Integer}}`
 """
 function embedding(cfg::PartialGroupingConstraints, L::NormalizedAdjacency, restrictions::Vector{Vector{Integer}})
-    U = restriction_matrix(size(L, 1), restrictions) 
+    U = restriction_matrix(size(L, 1), restrictions)
     if (cfg.smooth)
         U = sparse(L.A)' * U
     end
@@ -275,7 +298,7 @@ function embedding(cfg::YuShiPopout, grA::Graph, grR::Graph)
     dr = nothing
     (eigvals, eigvec) = Arpack.eigs(Weq, Deq, nev = cfg.nev, tol = 0.000001,  which = :LM)
     #indexes = sortperm(real(eigvals))
-    return eigvec
+    return real(eigvec)
     #if (cfg.normalize)
     #    return SpectralClustering.normalize_rows(eigvec)
     #else
@@ -311,10 +334,14 @@ the cfg.nev eigenvectors associated with the non-zero smallest
 eigenvalues.
 """
 function embedding(cfg::ShiMalikLaplacian, L::NormalizedLaplacian)
-    (vals, V) = LightGraphs.eigs(sparse(L), nev=min(cfg.nev + 10, size(L, 1)), which = SR(), restarts=5000)
+    (vals, V) = LightGraphs.eigs(sparse(L),
+                                 nev=min(cfg.nev + 10, size(L, 1)),
+                                 which = SR(),
+                                 tol=1e-20,
+                                 restarts=5000)
     idxs = findall(real(vals) .> 0.0000001)
     idxs = idxs[1:min(length(idxs), cfg.nev)]
-    V = spdiagm(0 => L.A.A.D.^(1 / 2)) * real(V[:,idxs])
+    V = spdiagm(0 => L.A.A.D.^(-1 / 2)) * real(V[:,idxs])
     if cfg.normalize
         return normalize_rows(V)
     else

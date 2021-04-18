@@ -47,3 +47,10 @@ function svd_whiten(X)
     U, s, Vt = svd(X)
     return U * Vt
 end
+
+
+function orth(M::Matrix)
+    matrixRank = rank(M)
+    F = svd(M)
+    return F.U[:,1:matrixRank]
+  end
