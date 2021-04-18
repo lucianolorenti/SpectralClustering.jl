@@ -341,7 +341,7 @@ function embedding(cfg::ShiMalikLaplacian, L::NormalizedLaplacian)
                                  restarts=5000)
     idxs = findall(real(vals) .> 0.0000001)
     idxs = idxs[1:min(length(idxs), cfg.nev)]
-    V = spdiagm(0 => L.A.A.D.^(1 / 2)) * real(V[:,idxs])
+    V = spdiagm(0 => L.A.A.D.^(-1 / 2)) * real(V[:,idxs])
     if cfg.normalize
         return normalize_rows(V)
     else
