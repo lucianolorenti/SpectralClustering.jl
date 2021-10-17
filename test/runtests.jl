@@ -7,24 +7,29 @@ using Clustering
 using Images
 using Random
 using Distributions
+using LightGraphs
+using LightGraphs.LinAlg
+using SparseArrays
+using ArnoldiMethod
 
-import LightGraphs.LinAlg: adjacency_matrix
+
+import LightGraphs.LinAlg:adjacency_matrix
 number_of_vertices = 5
 Random.seed!(0)
 
 
-function two_gaussians(N::Integer = 500; std_1=5, std_2 = 5, center_1=[15,5], center_2=[-15, 5])
+function two_gaussians(N::Integer=500; std_1=5, std_2=5, center_1=[15,5], center_2=[-15, 5])
     d1 = (randn(2, N) * std_1) .+ center_1
     d2 = (randn(2, N) * std_2) .+ center_2
     labels = round.(Integer, vcat(zeros(N), ones(N)))
     return (hcat(d1, d2), labels)
 end
 
-function three_gaussians(N::Integer = 250; )
+function three_gaussians(N::Integer=250; )
     d1 = (randn(2, N) * 1.5) .+ [5, 0]
     d2 = (randn(2, N) * 1) .+ [0, 0]
     d3 = (randn(2, N) * 1.5) .+ [-5, 0]
-    labels = round.(Integer, vcat(zeros(N), ones(N), ones(N)* 2))
+    labels = round.(Integer, vcat(zeros(N), ones(N), ones(N) * 2))
     return (hcat(d1, d2, d3), labels)
 end
 
@@ -32,8 +37,8 @@ end
 @testset "Graph Creation" begin
     @testset "KNNNeighborhood" begin
         function weight(i::Integer, neigh, v, m)
-            return Distances.colwise(SqEuclidean(), m, v)
-        end
+        return Distances.colwise(SqEuclidean(), m, v)
+    end
         data = convert.(Float64, [2 2; -2 -2; 2 -2; -2 2;0  0]')
         knnconfig = KNNNeighborhood(data, 3);
         graph = create(knnconfig, weight, data);
@@ -73,7 +78,7 @@ end
         end
         X = [5.0 5; 5 4; 4 4; 6 6; -10 -10; -9 -9; -8 -8; -11 -11]'
         knnconfig = KNNNeighborhood(X, 3)
-        scale = local_scale(knnconfig, weight, X, k = 3)
+        scale = local_scale(knnconfig, weight, X, k=3)
         @test isapprox(scale[1], sqrt(2))
         @test isapprox(scale[end], sqrt(18))
     end
@@ -85,22 +90,23 @@ end
         end
         X = rand(RGB, 50, 50)
         knnconfig = PixelNeighborhood(3)
-        scale = local_scale(knnconfig, weight, X, k = 9)
+        scale = local_scale(knnconfig, weight, X, k=9)
         @test size(scale) == (2, 50 * 50)
-    end
-end;
+        end
+    end;
 
 @testset "Embedding" begin
     @testset "NgLaplacian" begin
         function weight(i::Integer, neigh, v, m)
-            return exp.(-Distances.colwise(SqEuclidean(), m, v) / 15)
+            return exp.(-Distances.colwise(SqEuclidean(), m, v) / 5)
         end
         (data, labels) = two_gaussians()
 
 
         knnconfig = KNNNeighborhood(data, 7)
         graph = create(knnconfig, weight, data)
-        emb = embedding(NgLaplacian(1), graph)
+        emb = embedding(NgLaplacian(2), graph)
+        emb = emb[:,2]
         pred_clustering = convert(Array{Int64}, (emb .<= mean(emb)))
         @test randindex(pred_clustering, labels)[4] > 0.9
     end
@@ -111,9 +117,33 @@ end;
         (data, labels) = two_gaussians()
         knnconfig = KNNNeighborhood(data, 15)
         graph = create(knnconfig, weight, data)
-        emb = embedding(ShiMalikLaplacian(1), graph)
-        pred_clustering = convert(Array{Int64}, (emb .<= mean(emb)))
+        emb = embedding(ShiMalikLaplacian(8), graph)
+        pred_clustering = convert(Array{Int64}, (emb[:, 1] .<= mean(emb[:, 1])))
         @test randindex(pred_clustering, labels)[4] > 0.9
+
+
+        # Check correct eigenvectors
+        normalized_laplacian =  NormalizedLaplacian(
+                                    NormalizedAdjacency(
+                                        CombinatorialAdjacency(
+                                            adjacency_matrix(graph, dir=:both))))
+        (vals, V) = LightGraphs.eigs(sparse(normalized_laplacian),
+                                    nev=min(5 + 10, size(normalized_laplacian, 1)),
+                                    which=SR(),
+                                    tol=1e-20,
+                                    restarts=5000)
+        emb = embedding(ShiMalikLaplacian(8, false), graph)
+        recovered_eigenvectors = spdiagm(0 => normalized_laplacian.A.A.D.^(-1 / 2)) * V
+
+        ca = CombinatorialAdjacency(adjacency_matrix(graph, dir=:both))
+        laplacian = spdiagm(0 => ca.D) - ca.A
+
+        for j=1:size(emb, 2)
+            a1 = ((laplacian*recovered_eigenvectors[:, j+1])./(spdiagm(0 => ca.D) *recovered_eigenvectors[:,j+1]))[1]
+            a2 = ((laplacian*emb[:, j])./(spdiagm(0 => ca.D) *emb[:,j]))[1] 
+            @test (a1-a2) < 1e-10
+        end
+
     end
     @testset "PartialGroupingConstraints" begin
         function weight(i::Integer, neigh, v, m)
@@ -125,16 +155,16 @@ end;
         graph = create(knnconfig, weight, d)
 
         indices_clus_1 = [1, 2, 3, 4, 5]
-        indices_clus_2 = [N+1, N+2, N+3, N+4]
-        indices_clus_3 = [2*N+1, 2*N+2, 2*N+3, 2*N+4]
+        indices_clus_2 = [N + 1, N + 2, N + 3, N + 4]
+        indices_clus_3 = [2 * N + 1, 2 * N + 2, 2 * N + 3, 2 * N + 4]
 
         constraints = Vector{Integer}[ vcat(indices_clus_1, indices_clus_2) ] ;
         emb_1 = embedding(PartialGroupingConstraints(1, smooth=true),  graph, constraints)
-        labels_1 = vcat(zeros(Integer, N*2), ones(Integer, N))
+        labels_1 = vcat(zeros(Integer, N * 2), ones(Integer, N))
 
         constraints = Vector{Integer}[ vcat(indices_clus_2, indices_clus_3) ]
         emb_2 = embedding(PartialGroupingConstraints(1, smooth=true),  graph, constraints)
-        labels_2 = vcat(zeros(Integer, N), ones(Integer, N*2))
+        labels_2 = vcat(zeros(Integer, N), ones(Integer, N * 2))
 
         pred_clustering = convert(Array{Int64}, (emb_1 .<= mean(emb_1)))
         @test randindex(pred_clustering, labels_1)[4] > 0.85
@@ -150,24 +180,24 @@ end;
             xy_dist = Distances.colwise(Euclidean(), vi[1:2], vneigh[1:2, :])
             a = 5
             b = 0.05
-            return (pdf.(Normal(0, a*15), xy_dist) - pdf.(Normal(0, a), xy_dist)) .*
-                   (pdf.(Normal(0, b*100), intensity_dist) - pdf.(Normal(0, b), intensity_dist))
+            return (pdf.(Normal(0, a * 15), xy_dist) - pdf.(Normal(0, a), xy_dist)) .*
+                        (pdf.(Normal(0, b * 100), intensity_dist) - pdf.(Normal(0, b), intensity_dist))
         end
         function attraction(i::Integer, ineigh, vi, vneigh)
             diff = weight(i, ineigh, vi, vneigh)
-            diff[diff.<0] .= 0
+            diff[diff .< 0] .= 0
             return diff
         end
         function repulsion(i::Integer, ineigh, vi, vneigh)
             diff = weight(i, ineigh, vi, vneigh)
-            diff[diff.>0] .= 0
+            diff[diff .> 0] .= 0
             return abs.(diff)
         end
-        img = zeros(31,31)
+        img = zeros(31, 31)
         img[8:25, 3:12] .= 0.9
         img[3:12, 5:28] .= 0.2
         img[8:25, 25:30] .= 0.6
-        img = Gray.(img + randn(31, 31)*0.03)
+        img = Gray.(img + randn(31, 31) * 0.03)
 
         labels = zeros(Integer, 31, 31)
         labels[8:25, 3:12] .= 1
@@ -192,8 +222,9 @@ end
         knnconfig = KNNNeighborhood(data, 7)
         graph = create(knnconfig, weight, data)
         (data, labels) = two_gaussians()
-        pred_clustering = clusterize(NgLaplacian(2), KMeansClusterizer(2), graph)
+        pred_clustering = clusterize(NgLaplacian(2, false), KMeansClusterizer(2), graph)
         @test randindex(pred_clustering.assignments, labels)[4] > 0.9
+
     end
     @testset "YuEigenvectorRotation" begin
         function weight(i::Integer, neigh, v, m)
@@ -206,7 +237,35 @@ end
         pred_clustering = clusterize(NgLaplacian(2), YuEigenvectorRotation(500), graph)
         @test randindex(pred_clustering.assignments, labels)[4] > 0.9
     end
+    @testset "Simple NgClustering" begin
+        function circle(N::Integer, r1::Float64)
+            x = []
+            y = []
+            for j = 1:N
+                angle = rand(0.0:0.001:2 * pi)
+                v = r1 * exp(im * angle)
+                push!(x, real(v) + rand() * r1 * 0.2)
+                push!(y, imag(v) + rand() * r1 * 0.2)
+            end
+            return hcat(x, y)
+        end
+        function circle_in_circle(N::Integer, r1::Float64, r2::Float64)
+            circle_1 = circle(N, r1)
+            circle_2 = circle(N, r2)
 
+            return (vcat(circle_1, circle_2)', vcat(ones(N), ones(N) * 2))
+        end
+
+
+        function weight(i::Integer, neigh, v, m)
+            return exp.(-Distances.colwise(SqEuclidean(), m, v) / 15)
+        end
+        (data, labels) = circle_in_circle(500, 15.0, 5.0)
+        knnconfig = KNNNeighborhood(data, 15)
+        graph = create(knnconfig, weight, data)
+        pred_clustering = clusterize(NgLaplacian(2), KMeansClusterizer(2), graph)
+        @test randindex(pred_clustering.assignments, Integer.(labels))[4] > 0.9
+    end
 end
 @testset "Landmark Selection" begin
     @testset "RandomLandmarkSelection" begin
@@ -215,7 +274,7 @@ end
         s = select_landmarks(r, 15, data)
         @test length(s) == 15
         @test length(unique(s)) == length(s)
-        @test minimum(s)>=1 && maximum(s)<= 25
+        @test minimum(s) >= 1 && maximum(s) <= 25
     end
     @testset "EvenlySpacedLandmarkSelection" begin
         e = EvenlySpacedLandmarkSelection()
@@ -223,7 +282,7 @@ end
         s = select_landmarks(e, 5, data)
         @test length(s) == 5
         @test all(diff(s) .== 5)
-        @test minimum(s)>=1 && maximum(s)<= 25
+        @test minimum(s) >= 1 && maximum(s) <= 25
     end
     @testset "BresenhamLandmarkSelection" begin
         e = BresenhamLandmarkSelection()
@@ -231,7 +290,7 @@ end
         s = select_landmarks(e, 5, data)
         @test length(s) == 5
         @test all(diff(s) .> 0)
-        @test minimum(s)>=1 && maximum(s)<= 25
+        @test minimum(s) >= 1 && maximum(s) <= 25
     end
 end
 @testset "Approximate Embedding" begin
@@ -244,24 +303,24 @@ end
             embedding_config = NystromMethod(EvenlySpacedLandmarkSelection(), 1000, weight, 1)
             emb = embedding(embedding_config, data)
             pred_clustering = convert(Array{Int64}, (emb .<= mean(emb)))
-            @test randindex(pred_clustering, labels)[4] > 0.9
+            @test randindex(pred_clustering, labels)[4] > 0.85
         end
         @testset "Image embedding" begin
-            function weight(i::Integer,j::Vector{<:Integer},pixel_i, neighbors_data)
+            function weight(i::Integer, j::Vector{<:Integer}, pixel_i, neighbors_data)
                 data_diff = pixel_i[3:5] .- neighbors_data[3:5,:]
-                a = exp.(-abs.(data_diff)./(2*0.1^2))
+                a = exp.(-abs.(data_diff) ./ (2 * 0.1^2))
                 a = prod(a, dims=1)
                 return vec(a)
             end
 
-            img = fill(RGB(0,0,0), 50, 50)
+            img = fill(RGB(0, 0, 0), 50, 50)
 
             cluster_1 = CartesianIndices(size(img))[5:20, 5:20]
             cluster_2 = CartesianIndices(size(img))[35:42, 35:47]
             img[cluster_1] .= RGB(1, 0, 0)
             img[cluster_2] .= RGB(0, 0, 1)
 
-            labels = zeros(Integer, 50*50)
+            labels = zeros(Integer, 50 * 50)
             labels[LinearIndices(size(img))[cluster_1][:]] .= 1
             labels[LinearIndices(size(img))[cluster_2][:]] .= 2
 
@@ -269,28 +328,28 @@ end
                                             500, weight, 1)
             emb = embedding(embedding_config, img)
             emb = vec(round.(emb, digits=2))
-            clusters = zeros(Integer, 50*50)
+            clusters = zeros(Integer, 50 * 50)
             for (i, val) in enumerate(unique(emb))
-                clusters[findall(emb.==val)] .= i -1
+                clusters[findall(emb .== val)] .= i - 1
             end
             @test randindex(clusters, labels)[4] > 0.95
         end
     end
     @testset "DNCuts" begin
-        function weight(i::Integer,j::Vector{<:Integer},pixel_i, neighbors_data)
+        function weight(i::Integer, j::Vector{<:Integer}, pixel_i, neighbors_data)
             data_diff = pixel_i[3:5] .- neighbors_data[3:5,:]
-            a = exp.(-((data_diff).^2)./(0.1))
+            a = exp.(-((data_diff).^2) ./ (0.1))
             a = prod(a, dims=1)
             return vec(a)
         end
-        img = fill(RGB(0,0,0), 50, 50)
+        img = fill(RGB(0, 0, 0), 50, 50)
 
         cluster_1 = CartesianIndices(size(img))[5:20, 5:20]
         cluster_2 = CartesianIndices(size(img))[35:42, 35:47]
         img[cluster_1] .= RGB(1, 0, 0)
         img[cluster_2] .= RGB(0, 0, 1)
 
-        labels = ones(Integer, 50*50)
+        labels = ones(Integer, 50 * 50)
         labels[LinearIndices(size(img))[cluster_1][:]] .= 2
         labels[LinearIndices(size(img))[cluster_2][:]] .= 3
 
@@ -331,10 +390,10 @@ end
         knnconfig = KNNNeighborhood(data, 7)
         graph_1 = create(knnconfig, weight_1, data);
         graph_2 = create(knnconfig, weight_2, data);
-        coreg = CoRegularizedMultiView([View(1, 0.001),
-                                        View(1, 0.001)])
+        coreg = CoRegularizedMultiView([View(2, 0.001),
+                                        View(2, 0.001)])
         emb = embedding(coreg, [graph_1, graph_2])
-        pred_clustering = convert(Array{Int64}, (emb[:, 1] .<= mean(emb[:, 1])))
+        pred_clustering = convert(Array{Int64}, (emb[:, 2] .<= mean(emb[:, 2])))
         @test randindex(pred_clustering, labels)[4] > 0.9
     end
     @testset "KernelProduct" begin
@@ -350,7 +409,7 @@ end
         graph_2 = create(knnconfig, weight_2, data);
         kernel_addition = KernelProduct(NgLaplacian(2))
         emb = embedding(kernel_addition, [graph_1, graph_2])
-        pred_clustering = convert(Array{Int64}, (emb[:, 1] .<= mean(emb[:, 1])))
+        pred_clustering = convert(Array{Int64}, (emb[:, 2] .<= mean(emb[:, 2])))
         @test randindex(pred_clustering, labels)[4] > 0.9
     end
     @testset "KernelAddition" begin
@@ -366,7 +425,7 @@ end
         graph_2 = create(knnconfig, weight_2, data);
         kernel_addition = KernelAddition(NgLaplacian(2))
         emb = embedding(kernel_addition, [graph_1, graph_2])
-        pred_clustering = convert(Array{Int64}, (emb[:, 1] .<= mean(emb[:, 1])))
+        pred_clustering = convert(Array{Int64}, (emb[:, 2] .<= mean(emb[:, 2])))
         @test randindex(pred_clustering, labels)[4] > 0.9
     end
 end
@@ -388,6 +447,6 @@ end
     @test number_of_patterns(a) == 50
     @test get_element(a, 1) == a[:, 1]
 
-    a = rand(RGB, 50 ,50)
-    @test number_of_patterns(a) == 50*50
+    a = rand(RGB, 50, 50)
+    @test number_of_patterns(a) == 50 * 50
 end

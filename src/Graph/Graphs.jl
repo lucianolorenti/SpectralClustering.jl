@@ -493,6 +493,11 @@ function cycles(g::Graph)
     return ciclos_vertices
 end
 
+import LinearAlgebra.issymmetric
+import LinearAlgebra.diag
+issymmetric(::SpectralClustering.Graph) = true
+diag(g::SpectralClustering.Graph) = [g.vertices[i].degree for i=1:length(g.vertices)]
+
 include("Creation.jl")
 include("Matrices.jl")
 include("Plot.jl")
